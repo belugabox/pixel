@@ -28,7 +28,7 @@ export function SettingsModal({ cfg, onClose, onSave }:
             <button type="button" className="secondary" onClick={async () => {
               const dir = await (window as any).dialog?.selectDirectory?.();
               if (dir) setLocal({ ...local, romsRoot: dir });
-            }}>Parcourir…</button>
+            }}>…</button>
           </div>
         </div>
         <div className="form-row">
@@ -38,7 +38,7 @@ export function SettingsModal({ cfg, onClose, onSave }:
             <button type="button" className="secondary" onClick={async () => {
               const dir = await (window as any).dialog?.selectDirectory?.();
               if (dir) setLocal({ ...local, emulatorsRoot: dir });
-            }}>Parcourir…</button>
+            }}>…</button>
           </div>
         </div>
         <div className="form-row">
@@ -48,7 +48,7 @@ export function SettingsModal({ cfg, onClose, onSave }:
             <button type="button" className="secondary" onClick={async () => {
               const dir = await (window as any).dialog?.selectDirectory?.();
               if (dir) setLocal({ ...local, toolsRoot: dir });
-            }}>Parcourir…</button>
+            }}>…</button>
           </div>
         </div>
         <div className="form-actions">

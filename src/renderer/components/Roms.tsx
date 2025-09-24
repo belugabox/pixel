@@ -13,7 +13,7 @@ export function Roms({ system, onBack }: { system: string; onBack: () => void })
   return (
     <section id="roms-screen">
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-        <button id="back-btn" className="back-btn" onClick={onBack}>← Retour</button>
+        <button id="back-btn" className="back-btn" onClick={onBack}>‹ Retour</button>
         <h2 id="roms-title" style={{ margin: '0 0 0 auto' }}>ROMs - {system} ({files.length})</h2>
       </div>
       <div id="roms" className="systems-row">
