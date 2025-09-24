@@ -21,6 +21,8 @@
     "url": "https://github.com/belugabox/pixel.git"
   },
   "license": "MIT",
+  "language": "fr-FR",
+  "ai_instructions": "./AI_INSTRUCTIONS.md",
   "devDependencies": {
     "@electron-forge/cli": "^7.9.0",
     "@electron-forge/maker-squirrel": "^7.9.0",
