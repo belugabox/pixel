@@ -26,6 +26,7 @@ export function RomTile({ fileName, systemId }: RomTileProps) {
   const [metadata, setMetadata] = useState<GameMetadata | null>(null);
   const [hasMetadata, setHasMetadata] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     checkMetadata();
@@ -33,6 +34,7 @@ export function RomTile({ fileName, systemId }: RomTileProps) {
 
   const checkMetadata = async () => {
     try {
+      setError(null);
       const exists = await (window as any).metadata?.has?.(fileName, systemId);
       setHasMetadata(exists);
       
@@ -42,6 +44,7 @@ export function RomTile({ fileName, systemId }: RomTileProps) {
       }
     } catch (error) {
       console.error('Error checking metadata:', error);
+      setError('Erreur lors de la vérification des métadonnées');
     }
   };
 
@@ -49,14 +52,18 @@ export function RomTile({ fileName, systemId }: RomTileProps) {
     if (isLoading) return;
     
     setIsLoading(true);
+    setError(null);
     try {
       const meta = await (window as any).metadata?.download?.(fileName, systemId);
       if (meta) {
         setMetadata(meta);
         setHasMetadata(true);
+      } else {
+        setError('Aucune métadonnée trouvée');
       }
     } catch (error) {
       console.error('Error downloading metadata:', error);
+      setError('Erreur lors du téléchargement');
     } finally {
       setIsLoading(false);
     }
@@ -94,13 +101,16 @@ export function RomTile({ fileName, systemId }: RomTileProps) {
         </div>
         
         {!hasMetadata && (
-          <button 
-            className="download-metadata-btn"
-            onClick={downloadMetadata}
-            disabled={isLoading}
-          >
-            {isLoading ? 'Téléchargement...' : 'Télécharger métadonnées'}
-          </button>
+          <div>
+            <button 
+              className="download-metadata-btn"
+              onClick={downloadMetadata}
+              disabled={isLoading}
+            >
+              {isLoading ? 'Téléchargement...' : 'Télécharger métadonnées'}
+            </button>
+            {error && <div className="error-message">{error}</div>}
+          </div>
         )}
       </div>
     </div>

@@ -82,11 +82,21 @@ export class ScreenScraperService {
       });
 
       if (!response.ok) {
+        if (response.status === 429) {
+          console.warn('ScreenScraper API rate limit exceeded');
+          return null;
+        }
         console.error(`ScreenScraper API error: ${response.status}`);
         return null;
       }
 
       const data = await response.json();
+      
+      // Handle API errors
+      if (data.header?.erreur) {
+        console.error('ScreenScraper API error:', data.header.erreur);
+        return null;
+      }
       
       if (data.response && data.response.jeu) {
         return data.response.jeu;
@@ -179,6 +189,43 @@ export class ScreenScraperService {
       return true;
     } catch {
       return false;
+    }
+  }
+
+  /**
+   * Download metadata for all ROMs in a system
+   */
+  async downloadSystemMetadata(
+    systemId: string,
+    romsRoot: string,
+    onProgress?: (current: number, total: number, fileName: string) => void
+  ): Promise<void> {
+    try {
+      const { promises: fs } = await import('node:fs');
+      const pathModule = await import('node:path');
+      
+      // Get list of ROM files for this system
+      const systemDir = pathModule.join(romsRoot, systemId);
+      const entries = await fs.readdir(systemDir, { withFileTypes: true });
+      const romFiles = entries.filter(e => e.isFile()).map(e => e.name);
+      
+      let current = 0;
+      for (const romFile of romFiles) {
+        current++;
+        onProgress?.(current, romFiles.length, romFile);
+        
+        // Skip if metadata already exists
+        const hasExisting = await this.hasMetadata(romFile, systemId, romsRoot);
+        if (hasExisting) {
+          continue;
+        }
+        
+        // Download metadata with a small delay to avoid rate limiting
+        await this.downloadMetadata(romFile, systemId, romsRoot);
+        await new Promise(resolve => setTimeout(resolve, 1000)); // 1 second delay
+      }
+    } catch (error) {
+      console.error('Error downloading system metadata:', error);
     }
   }
 

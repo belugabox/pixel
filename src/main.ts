@@ -156,6 +156,26 @@ app.whenReady().then(async () => {
         return false;
       }
     });
+
+    ipcMain.handle('metadata:downloadSystem', async (_evt, systemId: string, onProgress?: (current: number, total: number, fileName: string) => void) => {
+      try {
+        const cfg = await ensureConfig(userData);
+        if (!cfg.romsRoot) return;
+        
+        const { ScreenScraperService } = await import('./services/screenscraper');
+        const scraper = new ScreenScraperService(
+          cfg.screenscraper?.devId,
+          cfg.screenscraper?.devPassword,
+          cfg.screenscraper?.softname,
+          cfg.screenscraper?.ssid,
+          cfg.screenscraper?.sspassword
+        );
+        
+        await scraper.downloadSystemMetadata(systemId, cfg.romsRoot, onProgress);
+      } catch (error) {
+        console.error('Error downloading system metadata:', error);
+      }
+    });
 });
 
 // Quit when all windows are closed, except on macOS. There, it's common

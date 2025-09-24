@@ -245,3 +245,28 @@ button, input, select, textarea {
   background: #666;
   cursor: not-allowed;
 }
+
+.download-all-btn {
+  background: #4CAF50;
+  color: #fff;
+  border: 0;
+  padding: 8px 12px;
+  font-size: 0.5rem;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.download-all-btn:hover:not(:disabled) {
+  background: #45a049;
+}
+
+.download-all-btn:disabled {
+  background: #666;
+  cursor: not-allowed;
+}
+
+.error-message {
+  font-size: 0.4rem;
+  color: #ff6b6b;
+  margin-top: 4px;
+}
