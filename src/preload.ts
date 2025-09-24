@@ -1,9 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
-type Theme = 'default' | 'light' | 'dark';
-
 type UserConfig = {
-	theme: Theme;
 	romsRoot: string;
 	emulatorsRoot: string;
 	toolsRoot?: string;
@@ -41,6 +38,10 @@ contextBridge.exposeInMainWorld('catalog', {
 
 contextBridge.exposeInMainWorld('roms', {
 	list: async (): Promise<string[]> => ipcRenderer.invoke('roms:list'),
+});
+
+contextBridge.exposeInMainWorld('dialog', {
+	selectDirectory: async (): Promise<string | null> => ipcRenderer.invoke('dialog:selectDirectory'),
 });
 
 // See the Electron documentation for details on how to use preload scripts:

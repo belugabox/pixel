@@ -18,6 +18,42 @@
         <div id="systems" class="systems-row"></div>
       </div>
     </main>
+    <!-- Bouton paramètres -->
+    <button id="settings-btn" class="settings-btn" title="Paramètres" aria-label="Paramètres">⚙️</button>
+
+    <!-- Modal paramètres -->
+    <div id="settings-modal" class="modal-overlay" aria-hidden="true" style="display:none;">
+      <div class="modal-content" role="dialog" aria-modal="true" aria-labelledby="settings-title">
+        <h2 id="settings-title">Paramètres</h2>
+        <form id="settings-form">
+          <div class="form-row">
+            <label for="roms-root">Dossier ROMs (romsRoot)</label>
+            <div class="input-row">
+              <input type="text" id="roms-root" name="romsRoot" placeholder="C:\\chemin\\vers\\roms" />
+              <button type="button" id="browse-roms" class="secondary">Parcourir…</button>
+            </div>
+          </div>
+          <div class="form-row">
+            <label for="emulators-root">Dossier émulateurs (emulatorsRoot)</label>
+            <div class="input-row">
+              <input type="text" id="emulators-root" name="emulatorsRoot" placeholder="C:\\chemin\\vers\\emulateurs" />
+              <button type="button" id="browse-emulators" class="secondary">Parcourir…</button>
+            </div>
+          </div>
+          <div class="form-row">
+            <label for="tools-root">Dossier outils (toolsRoot)</label>
+            <div class="input-row">
+              <input type="text" id="tools-root" name="toolsRoot" placeholder="(optionnel)" />
+              <button type="button" id="browse-tools" class="secondary">Parcourir…</button>
+            </div>
+          </div>
+          <div class="form-actions">
+            <button type="button" id="settings-cancel">Annuler (Esc)</button>
+            <button type="submit" id="settings-save" class="primary">Enregistrer</button>
+          </div>
+        </form>
+      </div>
+    </div>
     <script type="module" src="/src/renderer.ts"></script>
   </body>
 </html>

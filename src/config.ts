@@ -3,8 +3,6 @@ import path from 'node:path';
 import defaultCfg from './config.default.json';
 import catalogDefault from './catalog.default.json';
 
-export type Theme = 'default' | 'light' | 'dark';
-
 export interface Emulator {
   id: string;
   name: string;
@@ -22,7 +20,6 @@ export interface System {
 }
 
 export interface UserConfig {
-  theme: Theme;
   romsRoot: string;
   emulatorsRoot: string;
   toolsRoot?: string;

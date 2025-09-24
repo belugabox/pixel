@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain } from 'electron';
+import { app, BrowserWindow, ipcMain, dialog } from 'electron';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import started from 'electron-squirrel-startup';
@@ -64,6 +64,14 @@ app.whenReady().then(async () => {
       } catch {
         return [];
       }
+    });
+
+    ipcMain.handle('dialog:selectDirectory', async () => {
+      const res = await dialog.showOpenDialog({
+        properties: ['openDirectory']
+      });
+      if (res.canceled || res.filePaths.length === 0) return null;
+      return res.filePaths[0];
     });
 });
 

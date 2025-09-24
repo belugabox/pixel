@@ -41,18 +41,23 @@ async function renderUserConfig() {
     const cfg = await (window as any).config.get();
     const app = document.getElementById('app');
     if (!app) return;
+    let title = document.getElementById('user-config-title');
+    if (!title) {
+      title = document.createElement('h2');
+      title.id = 'user-config-title';
+      title.textContent = 'Configuration utilisateur';
+      app.appendChild(title);
+    }
 
-    // Titre
-    const h2 = document.createElement('h2');
-    h2.textContent = 'Configuration utilisateur';
-    app.appendChild(h2);
-
-    // Affichage JSON
-    const pre = document.createElement('pre');
-    pre.id = 'user-config';
-    pre.style.whiteSpace = 'pre-wrap';
+    // Affichage JSON (idempotent)
+    let pre = document.getElementById('user-config') as HTMLPreElement | null;
+    if (!pre) {
+      pre = document.createElement('pre');
+      pre.id = 'user-config';
+      pre.style.whiteSpace = 'pre-wrap';
+      app.appendChild(pre);
+    }
     pre.textContent = JSON.stringify(cfg, null, 2);
-    app.appendChild(pre);
   } catch (e) {
     console.error('Impossible de charger la configuration', e);
   }
@@ -83,16 +88,153 @@ async function renderSystems() {
   }
 }
 
+// ------------ Paramètres (modal) ------------
+function openSettingsModal() {
+  const modal = document.getElementById('settings-modal');
+  if (!modal) return;
+  modal.style.display = 'flex';
+  modal.setAttribute('aria-hidden', 'false');
+}
+
+function closeSettingsModal() {
+  const modal = document.getElementById('settings-modal');
+  if (!modal) return;
+  modal.style.display = 'none';
+  modal.setAttribute('aria-hidden', 'true');
+}
+
+async function loadSettingsForm() {
+  const cfg = await (window as any).config.get();
+  (document.getElementById('roms-root') as HTMLInputElement | null)!.value = cfg.romsRoot ?? '';
+  (document.getElementById('emulators-root') as HTMLInputElement | null)!.value = cfg.emulatorsRoot ?? '';
+  (document.getElementById('tools-root') as HTMLInputElement | null)!.value = cfg.toolsRoot ?? '';
+}
+
+async function saveSettingsForm(ev: SubmitEvent) {
+  ev.preventDefault();
+  const romsRoot = (document.getElementById('roms-root') as HTMLInputElement | null)!.value;
+  const emulatorsRoot = (document.getElementById('emulators-root') as HTMLInputElement | null)!.value;
+  const toolsRoot = (document.getElementById('tools-root') as HTMLInputElement | null)!.value || undefined;
+
+  const newCfg = { romsRoot, emulatorsRoot, toolsRoot };
+  try {
+    await (window as any).config.set(newCfg);
+    await renderUserConfig();
+    await renderSystems();
+    closeSettingsModal();
+  } catch (e) {
+    console.error('Erreur lors de l\'enregistrement de la configuration', e);
+  }
+}
+
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', () => {
     hidePreloader();
     void renderUserConfig();
     void renderSystems();
+
+    // Wiring settings UI
+    const btn = document.getElementById('settings-btn');
+    btn?.addEventListener('click', async () => {
+      await loadSettingsForm();
+      openSettingsModal();
+    });
+
+    const form = document.getElementById('settings-form');
+    form?.addEventListener('submit', saveSettingsForm as any);
+
+    const cancel = document.getElementById('settings-cancel');
+    cancel?.addEventListener('click', () => closeSettingsModal());
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        const modal = document.getElementById('settings-modal');
+        const isOpen = modal && modal.style.display !== 'none';
+        if (isOpen) {
+          closeSettingsModal();
+        } else {
+          void loadSettingsForm();
+          openSettingsModal();
+        }
+      }
+    });
+
+    // Parcourir… handlers
+    document.getElementById('browse-roms')?.addEventListener('click', async () => {
+      const dir = await (window as any).dialog?.selectDirectory?.();
+      if (dir) {
+        const input = document.getElementById('roms-root') as HTMLInputElement | null;
+        if (input) { input.value = dir; input.focus(); }
+      }
+    });
+    document.getElementById('browse-emulators')?.addEventListener('click', async () => {
+      const dir = await (window as any).dialog?.selectDirectory?.();
+      if (dir) {
+        const input = document.getElementById('emulators-root') as HTMLInputElement | null;
+        if (input) { input.value = dir; input.focus(); }
+      }
+    });
+    document.getElementById('browse-tools')?.addEventListener('click', async () => {
+      const dir = await (window as any).dialog?.selectDirectory?.();
+      if (dir) {
+        const input = document.getElementById('tools-root') as HTMLInputElement | null;
+        if (input) { input.value = dir; input.focus(); }
+      }
+    });
   });
 } else {
   hidePreloader();
   void renderUserConfig();
   void renderSystems();
+
+  // Wiring settings UI (in case readyState is already complete)
+  const btn = document.getElementById('settings-btn');
+  btn?.addEventListener('click', async () => {
+    await loadSettingsForm();
+    openSettingsModal();
+  });
+
+  const form = document.getElementById('settings-form');
+  form?.addEventListener('submit', saveSettingsForm as any);
+
+  const cancel = document.getElementById('settings-cancel');
+  cancel?.addEventListener('click', () => closeSettingsModal());
+
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      const modal = document.getElementById('settings-modal');
+      const isOpen = modal && modal.style.display !== 'none';
+      if (isOpen) {
+        closeSettingsModal();
+      } else {
+        void loadSettingsForm();
+        openSettingsModal();
+      }
+    }
+  });
+
+  // Parcourir… handlers (fallback if DOM already loaded)
+  document.getElementById('browse-roms')?.addEventListener('click', async () => {
+    const dir = await (window as any).dialog?.selectDirectory?.();
+    if (dir) {
+      const input = document.getElementById('roms-root') as HTMLInputElement | null;
+      if (input) { input.value = dir; input.focus(); }
+    }
+  });
+  document.getElementById('browse-emulators')?.addEventListener('click', async () => {
+    const dir = await (window as any).dialog?.selectDirectory?.();
+    if (dir) {
+      const input = document.getElementById('emulators-root') as HTMLInputElement | null;
+      if (input) { input.value = dir; input.focus(); }
+    }
+  });
+  document.getElementById('browse-tools')?.addEventListener('click', async () => {
+    const dir = await (window as any).dialog?.selectDirectory?.();
+    if (dir) {
+      const input = document.getElementById('tools-root') as HTMLInputElement | null;
+      if (input) { input.value = dir; input.focus(); }
+    }
+  });
 }
 
 console.log(
