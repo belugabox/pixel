@@ -78,14 +78,96 @@ async function renderSystems() {
     for (const name of folders) {
       const tile = document.createElement('div');
       tile.className = 'system-tile';
+      tile.tabIndex = 0;
       const h3 = document.createElement('h3');
       h3.textContent = name;
       tile.appendChild(h3);
+      tile.addEventListener('click', () => openRomsScreen(name));
+      tile.addEventListener('keydown', (ev: KeyboardEvent) => {
+        if (ev.key === 'Enter' || ev.key === ' ') {
+          ev.preventDefault();
+          openRomsScreen(name);
+        } else if (ev.key === 'ArrowRight' || ev.key === 'ArrowLeft') {
+          ev.preventDefault();
+          moveFocusHorizontal(tile, ev.key === 'ArrowRight');
+        }
+      });
       systemsEl.appendChild(tile);
     }
   } catch (e) {
     console.error('Impossible de lister les systèmes', e);
   }
+}
+
+async function renderRoms(systemFolder: string) {
+  try {
+    const romsEl = document.getElementById('roms');
+    if (!romsEl) return;
+    const files: string[] = await (window as any).roms?.listFiles?.(systemFolder)
+      ?? await (window as any).electron?.invoke?.('roms:listFiles', systemFolder)
+      ?? [];
+    romsEl.innerHTML = '';
+    const title = document.getElementById('roms-title');
+    if (title) title.textContent = `ROMs - ${systemFolder} (${files.length})`;
+    if (files.length === 0) {
+      const empty = document.createElement('div');
+      empty.className = 'empty-state';
+      empty.textContent = 'Aucune ROM trouvée pour ce système.';
+      romsEl.appendChild(empty);
+    } else {
+      for (const file of files) {
+        const tile = document.createElement('div');
+        tile.className = 'system-tile';
+        tile.tabIndex = 0;
+        const h3 = document.createElement('h3');
+        h3.textContent = file;
+        tile.appendChild(h3);
+        tile.addEventListener('keydown', (ev: KeyboardEvent) => {
+          if (ev.key === 'Enter' || ev.key === ' ') {
+            ev.preventDefault();
+            // futur: lancer la ROM
+          } else if (ev.key === 'ArrowRight' || ev.key === 'ArrowLeft') {
+            ev.preventDefault();
+            moveFocusHorizontal(tile, ev.key === 'ArrowRight');
+          }
+        });
+        romsEl.appendChild(tile);
+      }
+    }
+  } catch (e) {
+    console.error('Impossible de lister les ROMs', e);
+  }
+}
+
+function openRomsScreen(systemFolder: string) {
+  const sysScreen = document.getElementById('systems-screen');
+  const romsScreen = document.getElementById('roms-screen');
+  const title = document.getElementById('roms-title');
+  if (sysScreen && romsScreen) {
+    sysScreen.style.display = 'none';
+    romsScreen.style.display = '';
+  }
+  if (title) title.textContent = `ROMs - ${systemFolder}`;
+  void renderRoms(systemFolder);
+}
+
+function backToSystemsScreen() {
+  const sysScreen = document.getElementById('systems-screen');
+  const romsScreen = document.getElementById('roms-screen');
+  if (sysScreen && romsScreen) {
+    romsScreen.style.display = 'none';
+    sysScreen.style.display = '';
+  }
+}
+
+function moveFocusHorizontal(current: HTMLElement, forward: boolean) {
+  const container = current.parentElement;
+  if (!container) return;
+  const tiles = Array.from(container.querySelectorAll<HTMLElement>('.system-tile'));
+  const idx = tiles.indexOf(current);
+  if (idx === -1) return;
+  const nextIdx = forward ? Math.min(idx + 1, tiles.length - 1) : Math.max(idx - 1, 0);
+  if (nextIdx !== idx) tiles[nextIdx].focus();
 }
 
 // ------------ Paramètres (modal) ------------
@@ -152,12 +234,21 @@ if (document.readyState === 'loading') {
         const isOpen = modal && modal.style.display !== 'none';
         if (isOpen) {
           closeSettingsModal();
-        } else {
-          void loadSettingsForm();
-          openSettingsModal();
+          return;
         }
+        const romsScreen = document.getElementById('roms-screen');
+        const romsVisible = romsScreen && romsScreen.style.display !== 'none';
+        if (romsVisible) {
+          backToSystemsScreen();
+          return;
+        }
+        void loadSettingsForm();
+        openSettingsModal();
       }
     });
+
+    // Bouton retour
+    document.getElementById('back-btn')?.addEventListener('click', () => backToSystemsScreen());
 
     // Parcourir… handlers
     document.getElementById('browse-roms')?.addEventListener('click', async () => {
@@ -204,14 +295,17 @@ if (document.readyState === 'loading') {
     if (e.key === 'Escape') {
       const modal = document.getElementById('settings-modal');
       const isOpen = modal && modal.style.display !== 'none';
-      if (isOpen) {
-        closeSettingsModal();
-      } else {
-        void loadSettingsForm();
-        openSettingsModal();
-      }
+      if (isOpen) { closeSettingsModal(); return; }
+      const romsScreen = document.getElementById('roms-screen');
+      const romsVisible = romsScreen && romsScreen.style.display !== 'none';
+      if (romsVisible) { backToSystemsScreen(); return; }
+      void loadSettingsForm();
+      openSettingsModal();
     }
   });
+
+  // Bouton retour
+  document.getElementById('back-btn')?.addEventListener('click', () => backToSystemsScreen());
 
   // Parcourir… handlers (fallback if DOM already loaded)
   document.getElementById('browse-roms')?.addEventListener('click', async () => {
@@ -236,7 +330,3 @@ if (document.readyState === 'loading') {
     }
   });
 }
-
-console.log(
-  '👋 This message is being logged by "renderer.ts", included via Vite',
-);

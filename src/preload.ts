@@ -38,6 +38,7 @@ contextBridge.exposeInMainWorld('catalog', {
 
 contextBridge.exposeInMainWorld('roms', {
 	list: async (): Promise<string[]> => ipcRenderer.invoke('roms:list'),
+	listFiles: async (systemFolder: string): Promise<string[]> => ipcRenderer.invoke('roms:listFiles', systemFolder),
 });
 
 contextBridge.exposeInMainWorld('dialog', {

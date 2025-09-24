@@ -66,6 +66,33 @@ app.whenReady().then(async () => {
       }
     });
 
+    ipcMain.handle('roms:listFiles', async (_evt, systemFolder: string) => {
+      try {
+        const cfg = await ensureConfig(userData);
+        const dir = path.join(cfg.romsRoot, systemFolder);
+        const entries = await fs.readdir(dir, { withFileTypes: true });
+
+        // Filtrage par extensions du catalogue (on suppose que systemFolder == id du système)
+        const catalog = getCatalog();
+        const sys = catalog.systems.find(s => s.id.toLowerCase() === String(systemFolder).toLowerCase());
+        const allowed = sys?.extensions?.map(e => e.toLowerCase()) ?? null;
+
+        const files = entries
+          .filter(e => e.isFile())
+          .map(e => e.name)
+          .filter(name => {
+            if (!allowed) return true; // si inconnu, on n'exclut rien
+            const ext = path.extname(name).toLowerCase();
+            return allowed.includes(ext);
+          })
+          .sort();
+
+        return files;
+      } catch {
+        return [];
+      }
+    });
+
     ipcMain.handle('dialog:selectDirectory', async () => {
       const res = await dialog.showOpenDialog({
         properties: ['openDirectory']

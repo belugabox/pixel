@@ -13,10 +13,18 @@
     </div>
     <main id="app" style="display:none">
       <h1>Pixel</h1>
-      <div>
+      <section id="systems-screen">
         <h2>Systèmes détectés</h2>
         <div id="systems" class="systems-row"></div>
-      </div>
+      </section>
+
+      <section id="roms-screen" style="display:none">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+          <button id="back-btn" class="back-btn" aria-label="Retour">← Retour</button>
+          <h2 id="roms-title" style="margin: 0 0 0 auto;">ROMs</h2>
+        </div>
+        <div id="roms" class="systems-row"></div>
+      </section>
     </main>
     <!-- Bouton paramètres -->
     <button id="settings-btn" class="settings-btn" title="Paramètres" aria-label="Paramètres">⚙️</button>
