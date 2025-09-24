@@ -1,13 +1,19 @@
+/* Offline font via package */
+@import '@fontsource/press-start-2p';
+
 body {
-  font-family:
-    -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial,
-    sans-serif;
-   margin: 0;
-   padding: 0;
+  font-family: 'Press Start 2P', cursive;
+  margin: 0;
+  padding: 0;
   max-width: 100%;
   padding: 1rem;
   background: #1e1e1e; 
   color: #eee;
+}
+
+/* Form controls inherit font */
+button, input, select, textarea {
+  font-family: inherit;
 }
 
 .systems-row {
