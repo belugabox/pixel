@@ -27,6 +27,7 @@ export function Roms({ system, onBack }: { system: string; onBack: () => void })
     onBack,
     onOpenSettings: () => document.getElementById('settings-btn')?.click(),
     onQuit: () => document.getElementById('quit-btn')?.click(),
+    activeGuard: () => !document.getElementById('settings-modal'),
   });
 
   const downloadAllMetadata = async () => {

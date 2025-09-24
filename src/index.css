@@ -83,6 +83,32 @@ textarea {
 .settings-btn:hover {
   background: #3a3a3a;
 }
+.settings-menu {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 12px 0;
+}
+.settings-menu .menu-item {
+  background: #2d2d2d;
+  color: #eee;
+  border: 0;
+  padding: 14px 16px;
+  text-align: left;
+  cursor: pointer;
+}
+.settings-menu .menu-title {
+  font-size: 0.85rem;
+}
+.settings-menu .menu-desc {
+  font-size: 0.6rem;
+  opacity: 0.8;
+}
+.settings-menu .menu-item:hover,
+.settings-menu .menu-item:focus-visible {
+  background: #3a3a3a;
+  outline: 2px solid #ff156d;
+}
 
 /* Quit button (top-right, next to settings) */
 .quit-btn {
@@ -119,7 +145,7 @@ textarea {
   background: #222;
   color: #eee;
   border: 0;
-  width: min(600px, 92vw);
+  width: min(760px, 95vw);
   max-height: 85vh;
   overflow-y: auto;
   padding: 16px 18px;
@@ -146,6 +172,38 @@ textarea {
   box-shadow: 0 -4px 8px rgba(0, 0, 0, 0.2);
 }
 
+/* Settings layout with vertical submenu */
+.settings-layout {
+  display: grid;
+  grid-template-columns: 200px 1fr;
+  gap: 16px;
+}
+.settings-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.settings-sidebar button {
+  background: #2d2d2d;
+  color: #eee;
+  border: 0;
+  padding: 10px 12px;
+  text-align: left;
+  cursor: pointer;
+}
+.settings-sidebar button:hover,
+.settings-sidebar button:focus {
+  background: #3a3a3a;
+  outline: none;
+}
+.settings-sidebar button.active {
+  background: #3a3a3a;
+  outline: 2px solid #ff156d;
+}
+.settings-content {
+  min-width: 0;
+}
+
 .form-row {
   display: flex;
   flex-direction: column;
@@ -161,6 +219,13 @@ textarea {
   color: #eee;
   border: 1px solid #555;
   padding: 8px 10px;
+}
+
+.modal-content input:focus-visible,
+.modal-content select:focus-visible,
+.modal-content button:focus-visible {
+  outline: 2px solid #ff156d;
+  outline-offset: 2px;
 }
 
 .input-row {
@@ -197,6 +262,12 @@ textarea {
 }
 .form-actions button:hover {
   filter: brightness(1.1);
+}
+.form-actions button:disabled,
+.form-actions .primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  filter: none;
 }
 
 /* Back button */

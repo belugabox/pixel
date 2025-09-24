@@ -5,10 +5,11 @@ type Direction = "left" | "right" | "up" | "down";
 export type InputNavOptions = {
   itemSelector: string;
   scopeSelector?: string;
-  mode: "row" | "grid";
+  mode: "row" | "grid" | "list";
   onBack?: () => void;
   onOpenSettings?: () => void;
   onQuit?: () => void;
+  activeGuard?: () => boolean; // return true to enable handling in current context
 };
 
 export function useInputNavigation(opts: InputNavOptions) {
@@ -106,13 +107,29 @@ export function useInputNavigation(opts: InputNavOptions) {
   const handleMove = (dir: Direction) => {
     if (opts.mode === "row") {
       if (dir === "left" || dir === "right") moveRow(dir);
-    } else {
+    } else if (opts.mode === "grid") {
       moveGrid(dir);
+    } else if (opts.mode === "list") {
+      const items = getItems();
+      if (items.length === 0) return;
+      const idx = getFocusedIndex();
+      if (dir === "up") focusIndex(idx - 1);
+      else if (dir === "down") focusIndex(idx + 1);
     }
   };
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      // Determine if this handler should be active
+      let active = true;
+      if (opts.activeGuard) active = !!opts.activeGuard();
+      else if (opts.scopeSelector) {
+        const scopeEl = document.querySelector(opts.scopeSelector);
+        const target =
+          (document.activeElement as HTMLElement | null) || undefined;
+        if (scopeEl && target && !scopeEl.contains(target)) active = false;
+      }
+      if (!active) return;
       switch (e.key) {
         case "ArrowLeft":
           e.preventDefault();
@@ -130,7 +147,6 @@ export function useInputNavigation(opts: InputNavOptions) {
           e.preventDefault();
           handleMove("down");
           break;
-        case "Backspace":
         case "Escape":
           if (opts.onBack) {
             e.preventDefault();
@@ -151,13 +167,33 @@ export function useInputNavigation(opts: InputNavOptions) {
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [opts.mode]);
+  }, [
+    opts.itemSelector,
+    opts.scopeSelector,
+    opts.mode,
+    opts.onBack,
+    opts.onOpenSettings,
+    opts.onQuit,
+  ]);
 
   useEffect(() => {
     let raf = 0;
     const repeatDelay = 150; // ms between repeat moves
 
     const poll = () => {
+      // Determine if this handler should be active
+      let active = true;
+      if (opts.activeGuard) active = !!opts.activeGuard();
+      else if (opts.scopeSelector) {
+        const scopeEl = document.querySelector(opts.scopeSelector);
+        const target =
+          (document.activeElement as HTMLElement | null) || undefined;
+        if (scopeEl && target && !scopeEl.contains(target)) active = false;
+      }
+      if (!active) {
+        raf = requestAnimationFrame(poll);
+        return;
+      }
       const gps = navigator.getGamepads?.() || [];
       const gp = gps.find((g) => g && g.connected && g.mapping === "standard");
       const now = performance.now();
@@ -227,5 +263,12 @@ export function useInputNavigation(opts: InputNavOptions) {
     };
     raf = requestAnimationFrame(poll);
     return () => cancelAnimationFrame(raf);
-  }, [opts.mode]);
+  }, [
+    opts.itemSelector,
+    opts.scopeSelector,
+    opts.mode,
+    opts.onBack,
+    opts.onOpenSettings,
+    opts.onQuit,
+  ]);
 }
