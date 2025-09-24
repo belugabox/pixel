@@ -5,6 +5,7 @@ import { Systems } from './components/Systems';
 import { Roms } from './components/Roms';
 import { SettingsButton } from './components/SettingsButton';
 import { SettingsModal } from './components/SettingsModal';
+import { QuitButton } from './components/QuitButton';
 
 export default function App() {
   const { cfg, save, refresh } = useUserConfig();
@@ -33,7 +34,8 @@ export default function App() {
         <Roms system={view.system} onBack={() => setView({ name: 'systems' })} />
       )}
 
-      <SettingsButton onOpen={() => setShowSettings(true)} />
+  <SettingsButton onOpen={() => setShowSettings(true)} />
+  <QuitButton />
       {showSettings && (
         <div
           id="settings-modal"

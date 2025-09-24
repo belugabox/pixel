@@ -84,5 +84,8 @@ declare global {
       has(romFileName: string, systemId: string): Promise<boolean>;
       downloadSystem(systemId: string): Promise<void>;
     };
+    app: {
+      quit(): Promise<void>;
+    };
   }
 }

@@ -80,6 +80,26 @@ textarea {
   background: #3a3a3a;
 }
 
+/* Quit button (top-right, next to settings) */
+.quit-btn {
+  position: fixed;
+  top: 12px;
+  right: 60px;
+  background: #7a1c1c;
+  color: #fff;
+  border: 0;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+}
+.quit-btn:hover {
+  background: #922222;
+}
+
 /* Modal overlay */
 .modal-overlay {
   position: fixed;

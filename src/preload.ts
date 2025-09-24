@@ -76,6 +76,10 @@ contextBridge.exposeInMainWorld("dialog", {
     ipcRenderer.invoke("dialog:selectDirectory"),
 });
 
+contextBridge.exposeInMainWorld("app", {
+  quit: async (): Promise<void> => ipcRenderer.invoke("app:quit"),
+});
+
 contextBridge.exposeInMainWorld("metadata", {
   get: async (
     romFileName: string,

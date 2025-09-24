@@ -15,6 +15,9 @@ const createWindow = () => {
   const mainWindow = new BrowserWindow({
     width: 800,
     height: 600,
+    kiosk: true,
+    fullscreen: true,
+    autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
     },
@@ -54,6 +57,10 @@ app.whenReady().then(async () => {
 
   ipcMain.handle("catalog:get", async () => {
     return getCatalog();
+  });
+
+  ipcMain.handle("app:quit", async () => {
+    app.quit();
   });
 
   ipcMain.handle("roms:list", async () => {
