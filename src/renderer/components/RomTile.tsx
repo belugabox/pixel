@@ -9,21 +9,25 @@ interface RomTileProps {
 
 export function RomTile({ fileName, systemId }: RomTileProps) {
   const [metadata, setMetadata] = useState<GameMetadata | null>(null);
-  const [hasMetadata, setHasMetadata] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null); // metadata-only errors
+  const [error, setError] = useState<string | null>(null);
   const { show } = useToast();
+  const [coverSrc, setCoverSrc] = useState<string | null>(null);
+  const [fallbackIndex, setFallbackIndex] = useState(0);
+  const fallbackExts = ['webp', 'png', 'jpg', 'svg'] as const;
+
+  const toFileUrl = (absPath: string) => {
+    if (!absPath) return '';
+    if (absPath.startsWith('file://')) return absPath;
+    const normalized = absPath.replace(/\\/g, '/');
+    return 'file:///' + encodeURI(normalized);
+  };
 
   useEffect(() => {
     (async () => {
       try {
         setError(null);
-        const exists = await window.metadata.has(fileName, systemId);
-        setHasMetadata(exists);
-        if (exists) {
-          const meta = await window.metadata.get(fileName, systemId);
-          setMetadata(meta);
-        }
+        const meta = await window.metadata.get(fileName, systemId);
+        setMetadata(meta);
       } catch (e) {
         console.error('Error checking metadata:', e);
         setError('Erreur lors de la vérification des métadonnées');
@@ -31,25 +35,15 @@ export function RomTile({ fileName, systemId }: RomTileProps) {
     })();
   }, [fileName, systemId]);
 
-  const downloadMetadata = async () => {
-    if (isLoading) return;
-    setIsLoading(true);
-    setError(null);
-    try {
-      const meta = await window.metadata.download(fileName, systemId);
-      if (meta) {
-        setMetadata(meta);
-        setHasMetadata(true);
-      } else {
-        setError('Aucune métadonnée trouvée');
-      }
-    } catch (e) {
-      console.error('Error downloading metadata:', e);
-      setError('Erreur lors du téléchargement');
-    } finally {
-      setIsLoading(false);
+  useEffect(() => {
+    if (metadata?.images?.cover) {
+      setCoverSrc(toFileUrl(metadata.images.cover));
+      setFallbackIndex(0);
+    } else {
+      setFallbackIndex(0);
+      setCoverSrc(`systems/${systemId}.${fallbackExts[0]}`);
     }
-  };
+  }, [metadata, systemId]);
 
   const launch = async () => {
     try {
@@ -65,15 +59,28 @@ export function RomTile({ fileName, systemId }: RomTileProps) {
 
   return (
     <div className="rom-tile" onClick={launch} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter') launch(); }}>
-      {metadata?.images?.cover && (
+      {coverSrc ? (
         <img
-          src={`file://${metadata.images.cover}`}
-          alt={metadata.name}
+          src={coverSrc}
+          alt={metadata?.name || fileName}
           className="rom-cover"
-          onError={(e) => {
-            e.currentTarget.style.display = 'none';
+          onError={() => {
+            // Try next fallback extension for system placeholder
+            if (!metadata?.images?.cover) {
+              const next = fallbackIndex + 1;
+              if (next < fallbackExts.length) {
+                setFallbackIndex(next);
+                setCoverSrc(`systems/${systemId}.${fallbackExts[next]}`);
+              } else {
+                setCoverSrc(null);
+              }
+            } else {
+              setCoverSrc(null);
+            }
           }}
         />
+      ) : (
+        <div className="rom-cover" aria-hidden="true" />
       )}
 
       <div className="rom-info">
@@ -93,24 +100,6 @@ export function RomTile({ fileName, systemId }: RomTileProps) {
           {metadata?.genre && <span className="rom-genre">{metadata.genre}</span>}
         </div>
 
-        {!hasMetadata ? (
-          <div>
-            <button
-              className="download-metadata-btn"
-              onClick={(e) => { e.stopPropagation(); downloadMetadata(); }}
-              disabled={isLoading}
-            >
-              {isLoading ? 'Téléchargement...' : 'Télécharger métadonnées'}
-            </button>
-          </div>
-        ) : (
-          <button
-            className="download-metadata-btn"
-            onClick={(e) => { e.stopPropagation(); launch(); }}
-          >
-            Lancer
-          </button>
-        )}
         {error && <div className="error-message">{error}</div>}
       </div>
     </div>
