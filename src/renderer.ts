@@ -45,12 +45,20 @@ function mountReact() {
   root.render(React.createElement(App));
 }
 
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', () => {
+const MIN_PRELOAD_MS = 500;
+const startTime = Date.now();
+
+function bootWithMinPreloader() {
+  const elapsed = Date.now() - startTime;
+  const remaining = Math.max(0, MIN_PRELOAD_MS - elapsed);
+  setTimeout(() => {
     hidePreloader();
     mountReact();
-  });
+  }, remaining);
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', bootWithMinPreloader);
 } else {
-  hidePreloader();
-  mountReact();
+  bootWithMinPreloader();
 }
