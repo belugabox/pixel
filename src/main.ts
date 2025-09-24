@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, ipcMain } from 'electron';
 import path from 'node:path';
 import started from 'electron-squirrel-startup';
 
@@ -13,8 +13,7 @@ const createWindow = () => {
     width: 800,
     height: 600,
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
-      devTools: false
+      preload: path.join(__dirname, 'preload.js')
     },
   });
 
@@ -28,13 +27,32 @@ const createWindow = () => {
   }
 
   // Open the DevTools.
-  mainWindow.webContents.openDevTools();
+  //mainWindow.webContents.openDevTools();
 };
 
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
 app.on('ready', createWindow);
+
+// IPC config handlers
+app.whenReady().then(async () => {
+  const userData = app.getPath('userData');
+  await ensureConfig(userData);
+
+  ipcMain.handle('config:get', async () => {
+    return ensureConfig(userData);
+  });
+
+    ipcMain.handle('config:set', async (_evt, cfg: UserConfig) => {
+    await saveConfig(userData, cfg);
+    return cfg;
+  });
+  
+    ipcMain.handle('catalog:get', async () => {
+      return getCatalog();
+    });
+});
 
 // Quit when all windows are closed, except on macOS. There, it's common
 // for applications and their menu bar to stay active until the user quits
@@ -55,3 +73,4 @@ app.on('activate', () => {
 
 // In this file you can include the rest of your app's specific main process
 // code. You can also put them in separate files and import them here.
+import { ensureConfig, saveConfig, type UserConfig, getCatalog } from './config';

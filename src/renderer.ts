@@ -28,6 +28,19 @@
 
 import './index.css';
 
+function hidePreloader() {
+  const pre = document.getElementById('preloader');
+  const app = document.getElementById('app');
+  if (pre) pre.style.display = 'none';
+  if (app) app.style.display = '';
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', hidePreloader);
+} else {
+  hidePreloader();
+}
+
 console.log(
   '👋 This message is being logged by "renderer.ts", included via Vite',
 );

@@ -1,0 +1,27 @@
+{
+  "emulators": [
+    {
+      "id": "retroarch",
+      "name": "RetroArch",
+      "path": "retroarch.exe",
+      "args": ["-L", "{core}", "{rom}"],
+      "coresPath": "cores"
+    }
+  ],
+  "systems": [
+    {
+      "id": "neogeo",
+      "name": "Neo Geo",
+      "extensions": [".zip", ".neo"],
+      "emulator": "retroarch",
+      "core": "fbneo_libretro"
+    },
+    {
+      "id": "snes",
+      "name": "Super Nintendo",
+      "extensions": [".smc", ".sfc", ".fig", ".zip"],
+      "emulator": "retroarch",
+      "core": "bsnes_libretro"
+    }
+  ]
+}
