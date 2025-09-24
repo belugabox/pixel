@@ -67,6 +67,10 @@ declare global {
     roms: {
       list(): Promise<string[]>;
       listFiles(systemFolder: string): Promise<string[]>;
+      launch(
+        systemId: string,
+        romFileName: string,
+      ): Promise<{ ok: true } | { ok: false; error: string }>;
     };
     dialog: {
       selectDirectory(): Promise<string | null>;

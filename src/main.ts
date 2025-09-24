@@ -1,4 +1,5 @@
 import { app, BrowserWindow, ipcMain, dialog } from "electron";
+import { spawn } from "node:child_process";
 import { MetadataService } from "./services/metadata-service";
 import { promises as fs } from "node:fs";
 import path from "node:path";
@@ -73,31 +74,149 @@ app.whenReady().then(async () => {
   ipcMain.handle("roms:listFiles", async (_evt, systemFolder: string) => {
     try {
       const cfg = await ensureConfig(userData);
-      const dir = path.join(cfg.romsRoot, systemFolder);
+      const root = cfg.romsRoot;
+      if (!root) return [];
+      const dir = path.join(root, systemFolder);
       const entries = await fs.readdir(dir, { withFileTypes: true });
 
-      // Filtrage par extensions du catalogue (on suppose que systemFolder == id du système)
       const catalog = getCatalog();
       const sys = catalog.systems.find(
         (s) => s.id.toLowerCase() === String(systemFolder).toLowerCase(),
       );
       const allowed = sys?.extensions?.map((e) => e.toLowerCase()) ?? null;
 
-      const files = entries
+      return entries
         .filter((e) => e.isFile())
         .map((e) => e.name)
         .filter((name) => {
-          if (!allowed) return true; // si inconnu, on n'exclut rien
+          if (!allowed) return true;
           const ext = path.extname(name).toLowerCase();
           return allowed.includes(ext);
         })
         .sort();
-
-      return files;
     } catch {
       return [];
     }
   });
+
+  ipcMain.handle(
+    "roms:launch",
+    async (
+      _evt,
+      systemId: string,
+      romFileName: string,
+    ): Promise<{ ok: true } | { ok: false; error: string }> => {
+      try {
+        const cfg = await ensureConfig(userData);
+        const catalog = getCatalog();
+
+        if (!cfg.romsRoot)
+          return { ok: false, error: "romsRoot non configuré" };
+        const sys = catalog.systems.find(
+          (s) => s.id.toLowerCase() === String(systemId).toLowerCase(),
+        );
+        if (!sys) return { ok: false, error: `Système inconnu: ${systemId}` };
+        const emu = catalog.emulators.find((e) => e.id === sys.emulator);
+        if (!emu || !emu.path)
+          return { ok: false, error: `Émulateur introuvable pour ${systemId}` };
+
+        const romPath = path.join(cfg.romsRoot, systemId, romFileName);
+        const romName = path.parse(romFileName).name;
+        const coreName = sys.core;
+        const emuRoot = path.join(cfg.emulatorsRoot || "", emu.id);
+
+        // Resolve core path with fallback
+        let corePath: string | undefined;
+        if (emu.coresPath && coreName) {
+          const primaryCore = path.join(
+            emuRoot,
+            emu.coresPath,
+            `${coreName}.dll`,
+          );
+          const fallbackCore = path.join(
+            cfg.emulatorsRoot || "",
+            emu.coresPath,
+            `${coreName}.dll`,
+          );
+          try {
+            await fs.access(primaryCore);
+            corePath = primaryCore;
+          } catch {
+            try {
+              await fs.access(fallbackCore);
+              corePath = fallbackCore;
+            } catch {
+              corePath = undefined;
+            }
+          }
+        }
+
+        // Build args replacing tokens
+        const builtArgs = (emu.args || []).map((a) =>
+          a
+            .replace("{rom}", romPath)
+            .replace("{romName}", romName)
+            .replace("{core}", corePath || coreName || ""),
+        );
+
+        // Resolve executable with fallback
+        let exePath = emu.path;
+        if (!path.isAbsolute(exePath)) {
+          const primaryExe = path.join(emuRoot, exePath);
+          const fallbackExe = path.join(cfg.emulatorsRoot || "", exePath);
+          try {
+            await fs.access(primaryExe);
+            exePath = primaryExe;
+          } catch {
+            try {
+              await fs.access(fallbackExe);
+              exePath = fallbackExe;
+            } catch {
+              // keep exePath as-is to report a helpful error below
+              exePath = primaryExe;
+            }
+          }
+        }
+
+        // Validate paths
+        try {
+          await fs.access(romPath);
+        } catch {
+          return { ok: false, error: `ROM introuvable: ${romFileName}` };
+        }
+        try {
+          await fs.access(exePath);
+        } catch {
+          return { ok: false, error: `Exécutable introuvable: ${exePath}` };
+        }
+        if (emu.coresPath && coreName) {
+          if (!corePath) {
+            return { ok: false, error: `Core introuvable: ${coreName}` };
+          }
+        }
+
+        // Log the command being executed for visibility
+        console.log(
+          "[roms:launch]",
+          exePath,
+          builtArgs.map((a) => (a.includes(" ") ? `"${a}"` : a)).join(" "),
+          "(cwd:",
+          path.dirname(exePath) + ")",
+        );
+
+        const child = spawn(exePath, builtArgs, {
+          cwd: path.dirname(exePath),
+          detached: true,
+          stdio: "ignore",
+        });
+        child.unref();
+        return { ok: true };
+      } catch (e) {
+        console.error("Failed to launch ROM:", e);
+        return { ok: false, error: "Échec du lancement (voir logs)" };
+      }
+    },
+  );
 
   ipcMain.handle("dialog:selectDirectory", async () => {
     const res = await dialog.showOpenDialog({

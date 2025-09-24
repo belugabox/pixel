@@ -26,23 +26,26 @@
  * ```
  */
 
-import './index.css';
-import React from 'react';
-import { createRoot } from 'react-dom/client';
-import App from './renderer/App';
+import "./index.css";
+import React from "react";
+import { createRoot } from "react-dom/client";
+import App from "./renderer/App";
+import { ToastProvider } from "./renderer/components/Toast";
 
 function hidePreloader() {
-  const pre = document.getElementById('preloader');
-  const app = document.getElementById('app');
-  if (pre) pre.style.display = 'none';
-  if (app) app.style.display = '';
+  const pre = document.getElementById("preloader");
+  const app = document.getElementById("app");
+  if (pre) pre.style.display = "none";
+  if (app) app.style.display = "";
 }
 
 function mountReact() {
-  const container = document.getElementById('app');
+  const container = document.getElementById("app");
   if (!container) return;
   const root = createRoot(container);
-  root.render(React.createElement(App));
+  root.render(
+    React.createElement(ToastProvider, null, React.createElement(App)),
+  );
 }
 
 const MIN_PRELOAD_MS = 500;
@@ -57,8 +60,8 @@ function bootWithMinPreloader() {
   }, remaining);
 }
 
-if (document.readyState === 'loading') {
-  document.addEventListener('DOMContentLoaded', bootWithMinPreloader);
+if (document.readyState === "loading") {
+  document.addEventListener("DOMContentLoaded", bootWithMinPreloader);
 } else {
   bootWithMinPreloader();
 }

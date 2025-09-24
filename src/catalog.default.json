@@ -4,14 +4,14 @@
       "id": "retroarch",
       "name": "RetroArch",
       "path": "retroarch.exe",
-      "args": ["-L", "{core}", "{rom}"],
+      "args": ["-f", "-L", "{core}", "{rom}"],
       "coresPath": "cores"
     },
     {
       "id": "m2emulator",
       "name": "Model 2 Emulator",
-      "path": "m2emulator.exe",
-      "args": ["{rom}"]
+      "path": "emulator.exe",
+      "args": ["-fullscreen", "{romName}"]
     }
   ],
   "systems": [
