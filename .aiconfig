@@ -1,0 +1,17 @@
+{
+  "language": "fr-FR",
+  "project_rules": {
+    "mandatory_french": true,
+    "code_comments_language": "french",
+    "documentation_language": "french",
+    "review_language": "french",
+    "commit_messages_language": "french"
+  },
+  "review_requirements": {
+    "provide_immediate_solution": true,
+    "include_corrected_code": true,
+    "provide_exact_commands": true,
+    "explain_reasoning": true
+  },
+  "instructions_file": "AI_INSTRUCTIONS.md"
+}
