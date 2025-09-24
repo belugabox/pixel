@@ -40,7 +40,7 @@ export function SettingsModal({ cfg, onClose, onSave }:
           <div className="input-row">
             <input id="roms-root" value={local.romsRoot} onChange={(e) => setLocal({ ...local, romsRoot: e.target.value })} />
             <button type="button" className="secondary" onClick={async () => {
-              const dir = await (window as any).dialog?.selectDirectory?.();
+              const dir = await window.dialog.selectDirectory();
               if (dir) setLocal({ ...local, romsRoot: dir });
             }}>…</button>
           </div>
@@ -50,7 +50,7 @@ export function SettingsModal({ cfg, onClose, onSave }:
           <div className="input-row">
             <input id="emulators-root" value={local.emulatorsRoot} onChange={(e) => setLocal({ ...local, emulatorsRoot: e.target.value })} />
             <button type="button" className="secondary" onClick={async () => {
-              const dir = await (window as any).dialog?.selectDirectory?.();
+              const dir = await window.dialog.selectDirectory();
               if (dir) setLocal({ ...local, emulatorsRoot: dir });
             }}>…</button>
           </div>
@@ -60,7 +60,7 @@ export function SettingsModal({ cfg, onClose, onSave }:
           <div className="input-row">
             <input id="tools-root" value={local.toolsRoot ?? ''} onChange={(e) => setLocal({ ...local, toolsRoot: e.target.value })} />
             <button type="button" className="secondary" onClick={async () => {
-              const dir = await (window as any).dialog?.selectDirectory?.();
+              const dir = await window.dialog.selectDirectory();
               if (dir) setLocal({ ...local, toolsRoot: dir });
             }}>…</button>
           </div>

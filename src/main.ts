@@ -107,16 +107,12 @@ app.whenReady().then(async () => {
         const cfg = await ensureConfig(userData);
         if (!cfg.romsRoot) return null;
         
-        const { ScreenScraperService } = await import('./services/screenscraper');
-        const scraper = new ScreenScraperService(
-          cfg.screenscraper?.devId,
-          cfg.screenscraper?.devPassword,
-          cfg.screenscraper?.softname,
-          cfg.screenscraper?.ssid,
-          cfg.screenscraper?.sspassword
-        );
+        const { MetadataService } = await import('./services/metadata-service');
+        const service = new MetadataService({
+          screenscraper: cfg.screenscraper
+        });
         
-        return await scraper.getCachedMetadata(romFileName, systemId, cfg.romsRoot);
+        return await service.getMetadata(romFileName, systemId, cfg.romsRoot);
       } catch {
         return null;
       }
@@ -127,16 +123,12 @@ app.whenReady().then(async () => {
         const cfg = await ensureConfig(userData);
         if (!cfg.romsRoot) return null;
         
-        const { ScreenScraperService } = await import('./services/screenscraper');
-        const scraper = new ScreenScraperService(
-          cfg.screenscraper?.devId,
-          cfg.screenscraper?.devPassword,
-          cfg.screenscraper?.softname,
-          cfg.screenscraper?.ssid,
-          cfg.screenscraper?.sspassword
-        );
+        const { MetadataService } = await import('./services/metadata-service');
+        const service = new MetadataService({
+          screenscraper: cfg.screenscraper
+        });
         
-        return await scraper.downloadMetadata(romFileName, systemId, cfg.romsRoot);
+        return await service.downloadMetadata(romFileName, systemId, cfg.romsRoot);
       } catch (error) {
         console.error('Error downloading metadata:', error);
         return null;
@@ -148,10 +140,12 @@ app.whenReady().then(async () => {
         const cfg = await ensureConfig(userData);
         if (!cfg.romsRoot) return false;
         
-        const { ScreenScraperService } = await import('./services/screenscraper');
-        const scraper = new ScreenScraperService();
+        const { MetadataService } = await import('./services/metadata-service');
+        const service = new MetadataService({
+          screenscraper: cfg.screenscraper
+        });
         
-        return await scraper.hasMetadata(romFileName, systemId, cfg.romsRoot);
+        return await service.hasMetadata(romFileName, systemId, cfg.romsRoot);
       } catch {
         return false;
       }
@@ -162,16 +156,12 @@ app.whenReady().then(async () => {
         const cfg = await ensureConfig(userData);
         if (!cfg.romsRoot) return;
         
-        const { ScreenScraperService } = await import('./services/screenscraper');
-        const scraper = new ScreenScraperService(
-          cfg.screenscraper?.devId,
-          cfg.screenscraper?.devPassword,
-          cfg.screenscraper?.softname,
-          cfg.screenscraper?.ssid,
-          cfg.screenscraper?.sspassword
-        );
+        const { MetadataService } = await import('./services/metadata-service');
+        const service = new MetadataService({
+          screenscraper: cfg.screenscraper
+        });
         
-        await scraper.downloadSystemMetadata(systemId, cfg.romsRoot, onProgress);
+        await service.downloadSystemMetadata(systemId, cfg.romsRoot, onProgress);
       } catch (error) {
         console.error('Error downloading system metadata:', error);
       }

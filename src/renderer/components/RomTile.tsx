@@ -1,21 +1,5 @@
 import React, { useEffect, useState } from 'react';
-
-interface GameMetadata {
-  id: string;
-  name: string;
-  description?: string;
-  releaseDate?: string;
-  genre?: string;
-  developer?: string;
-  publisher?: string;
-  players?: string;
-  rating?: string;
-  images: {
-    cover?: string;
-    screenshot?: string;
-    title?: string;
-  };
-}
+import { GameMetadata } from '../types';
 
 interface RomTileProps {
   fileName: string;
@@ -35,11 +19,11 @@ export function RomTile({ fileName, systemId }: RomTileProps) {
   const checkMetadata = async () => {
     try {
       setError(null);
-      const exists = await (window as any).metadata?.has?.(fileName, systemId);
+      const exists = await window.metadata.has(fileName, systemId);
       setHasMetadata(exists);
       
       if (exists) {
-        const meta = await (window as any).metadata?.get?.(fileName, systemId);
+        const meta = await window.metadata.get(fileName, systemId);
         setMetadata(meta);
       }
     } catch (error) {
@@ -54,7 +38,7 @@ export function RomTile({ fileName, systemId }: RomTileProps) {
     setIsLoading(true);
     setError(null);
     try {
-      const meta = await (window as any).metadata?.download?.(fileName, systemId);
+      const meta = await window.metadata.download(fileName, systemId);
       if (meta) {
         setMetadata(meta);
         setHasMetadata(true);

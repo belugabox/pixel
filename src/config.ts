@@ -60,7 +60,7 @@ export async function ensureConfig(userDataPath: string): Promise<UserConfig> {
       await saveConfig(userDataPath, defaultConfig);
       return defaultConfig;
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     if (err && (err as NodeJS.ErrnoException).code === 'ENOENT') {
       await saveConfig(userDataPath, defaultConfig);
       return defaultConfig;

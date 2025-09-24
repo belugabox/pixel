@@ -1,113 +1,27 @@
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
+import { GameMetadata, ScrapedGame, ScraperConfig, ImageType } from './types';
 
-// Types for ScreenScraper API responses
-export interface ScreenScraperGame {
-  id: string;
-  nom: string;
-  description?: string;
-  date?: string;
-  genre?: string;
-  developer?: string;
-  publisher?: string;
-  players?: string;
-  rating?: string;
-  medias?: ScreenScraperMedia[];
-}
+export abstract class BaseScraper {
+  protected abstract readonly name: string;
+  protected abstract readonly userAgent: string;
 
-export interface ScreenScraperMedia {
-  type: string;
-  url: string;
-  format: string;
-}
-
-export interface GameMetadata {
-  id: string;
-  name: string;
-  description?: string;
-  releaseDate?: string;
-  genre?: string;
-  developer?: string;
-  publisher?: string;
-  players?: string;
-  rating?: string;
-  images: {
-    cover?: string;
-    screenshot?: string;
-    title?: string;
-  };
-}
-
-export class ScreenScraperService {
-  private baseUrl = 'https://www.screenscraper.fr/api2';
-  private userAgent = 'pixel-frontend/0.0.1';
-  
-  constructor(
-    private devId?: string,
-    private devPassword?: string,
-    private softname?: string,
-    private ssid?: string,
-    private sspassword?: string
-  ) {}
+  constructor(protected config: ScraperConfig = {}) {}
 
   /**
    * Search for a game by ROM filename and system
    */
-  async searchGame(romFileName: string, systemId: string): Promise<ScreenScraperGame | null> {
-    try {
-      // Remove file extension and clean filename
-      const cleanName = this.cleanRomName(romFileName);
-      
-      const params = new URLSearchParams({
-        devid: this.devId || '',
-        devpassword: this.devPassword || '',
-        softname: this.softname || 'pixel-frontend',
-        output: 'json',
-        recherche: cleanName,
-        systemeid: this.getSystemId(systemId) || systemId
-      });
+  abstract searchGame(romFileName: string, systemId: string): Promise<ScrapedGame | null>;
 
-      // Add user credentials if available
-      if (this.ssid && this.sspassword) {
-        params.append('ssid', this.ssid);
-        params.append('sspassword', this.sspassword);
-      }
+  /**
+   * Get the system ID mapping for this scraper
+   */
+  protected abstract getSystemId(systemId: string): string | null;
 
-      const url = `${this.baseUrl}/jeuInfos.php?${params.toString()}`;
-      
-      const response = await fetch(url, {
-        headers: {
-          'User-Agent': this.userAgent
-        }
-      });
-
-      if (!response.ok) {
-        if (response.status === 429) {
-          console.warn('ScreenScraper API rate limit exceeded');
-          return null;
-        }
-        console.error(`ScreenScraper API error: ${response.status}`);
-        return null;
-      }
-
-      const data = await response.json();
-      
-      // Handle API errors
-      if (data.header?.erreur) {
-        console.error('ScreenScraper API error:', data.header.erreur);
-        return null;
-      }
-      
-      if (data.response && data.response.jeu) {
-        return data.response.jeu;
-      }
-
-      return null;
-    } catch (error) {
-      console.error('Error searching ScreenScraper:', error);
-      return null;
-    }
-  }
+  /**
+   * Map media type to our internal image type
+   */
+  protected abstract getImageType(mediaType: string): ImageType | null;
 
   /**
    * Download and save game metadata including images
@@ -123,9 +37,9 @@ export class ScreenScraperService {
 
       const metadata: GameMetadata = {
         id: game.id,
-        name: game.nom,
+        name: game.name,
         description: game.description,
-        releaseDate: game.date,
+        releaseDate: game.releaseDate,
         genre: game.genre,
         developer: game.developer,
         publisher: game.publisher,
@@ -139,8 +53,8 @@ export class ScreenScraperService {
       await fs.mkdir(metadataDir, { recursive: true });
 
       // Download images if available
-      if (game.medias && game.medias.length > 0) {
-        for (const media of game.medias) {
+      if (game.media && game.media.length > 0) {
+        for (const media of game.media) {
           const imageType = this.getImageType(media.type);
           if (imageType) {
             const imagePath = await this.downloadImage(media.url, metadataDir, romFileName, imageType);
@@ -157,7 +71,7 @@ export class ScreenScraperService {
 
       return metadata;
     } catch (error) {
-      console.error('Error downloading metadata:', error);
+      console.error(`Error downloading metadata with ${this.name}:`, error);
       return null;
     }
   }
@@ -225,11 +139,14 @@ export class ScreenScraperService {
         await new Promise(resolve => setTimeout(resolve, 1000)); // 1 second delay
       }
     } catch (error) {
-      console.error('Error downloading system metadata:', error);
+      console.error(`Error downloading system metadata with ${this.name}:`, error);
     }
   }
 
-  private cleanRomName(fileName: string): string {
+  /**
+   * Clean ROM filename for searching
+   */
+  protected cleanRomName(fileName: string): string {
     // Remove file extension
     let clean = path.parse(fileName).name;
     
@@ -244,39 +161,10 @@ export class ScreenScraperService {
     return clean;
   }
 
-  private getSystemId(systemId: string): string | null {
-    // Map internal system IDs to ScreenScraper system IDs
-    const systemMap: Record<string, string> = {
-      'neogeo': '142',
-      'snes': '4',
-      'model2': '32', // Sega Model 2
-      'nes': '3',
-      'gameboy': '9',
-      'gba': '12',
-      'genesis': '1',
-      'mastersystem': '2',
-      'psx': '57',
-      'ps2': '58',
-      'n64': '14',
-      'gamecube': '13'
-    };
-
-    return systemMap[systemId.toLowerCase()] || null;
-  }
-
-  private getImageType(mediaType: string): keyof GameMetadata['images'] | null {
-    const typeMap: Record<string, keyof GameMetadata['images']> = {
-      'box-2D': 'cover',
-      'box-front': 'cover',
-      'screenmarquee': 'title',
-      'ss': 'screenshot',
-      'screenshot': 'screenshot'
-    };
-
-    return typeMap[mediaType] || null;
-  }
-
-  private async downloadImage(
+  /**
+   * Download an image and save it locally
+   */
+  protected async downloadImage(
     url: string, 
     metadataDir: string, 
     romFileName: string, 
@@ -299,12 +187,15 @@ export class ScreenScraperService {
       await fs.writeFile(imagePath, Buffer.from(buffer));
       return imagePath;
     } catch (error) {
-      console.error('Error downloading image:', error);
+      console.error(`Error downloading image with ${this.name}:`, error);
       return null;
     }
   }
 
-  private getImageExtension(contentType: string): string {
+  /**
+   * Get file extension from content type
+   */
+  protected getImageExtension(contentType: string): string {
     switch (contentType) {
       case 'image/jpeg':
         return '.jpg';

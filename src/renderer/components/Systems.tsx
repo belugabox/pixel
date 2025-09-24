@@ -5,7 +5,7 @@ export function Systems({ onOpen }: { onOpen: (system: string) => void }) {
 
   useEffect(() => {
     (async () => {
-      const folders: string[] = await (window as any).roms?.list?.();
+      const folders = await window.roms.list();
       setSystems(folders ?? []);
     })();
   }, []);

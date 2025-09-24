@@ -1,6 +1,16 @@
-# ScreenScraper Integration
+# Metadata Scraping Architecture
 
-Ce document décrit l'intégration de l'API ScreenScraper.fr pour récupérer les métadonnées des ROMs.
+Ce document décrit l'architecture générique de scraping de métadonnées pour les ROMs, avec l'intégration de ScreenScraper.fr comme scraper principal.
+
+## Architecture générique
+
+L'application utilise une architecture modulaire permettant de supporter plusieurs scrapers :
+
+- **BaseScraper** : Classe abstraite définissant l'interface commune
+- **ScraperFactory** : Factory pour instancier et gérer les scrapers
+- **MetadataService** : Service principal orchestrant les opérations de métadonnées
+
+Cette architecture permet d'ajouter facilement d'autres scrapers (IGDB, MobyGames, etc.) sans modifier le code existant.
 
 ## Configuration
 
@@ -74,7 +84,7 @@ Sur l'écran des ROMs, chaque ROM sans métadonnée affiche un bouton "Télécha
 
 Un bouton "Télécharger toutes les métadonnées" permet de télécharger les métadonnées pour tous les ROMs d'un système en une fois.
 
-## Mapping des systèmes
+## Mapping des systèmes (ScreenScraper)
 
 Les systèmes sont mappés vers les IDs ScreenScraper suivants :
 
@@ -98,7 +108,25 @@ Les systèmes sont mappés vers les IDs ScreenScraper suivants :
 - Métadonnées manquantes : Les ROMs sans métadonnées sont marquées visuellement
 - Cache : Les métadonnées existantes ne sont pas re-téléchargées
 
-## API ScreenScraper
+## Architecture technique
+
+### Services
+
+- `MetadataService` : Service principal pour les opérations de métadonnées
+- `ScraperFactory` : Factory pour la gestion des scrapers
+- `BaseScraper` : Classe de base abstraite pour tous les scrapers
+- `ScreenScraperScraper` : Implémentation spécifique pour ScreenScraper.fr
+
+### Extension
+
+Pour ajouter un nouveau scraper :
+
+1. Créer une classe héritant de `BaseScraper`
+2. Implémenter les méthodes abstraites
+3. Ajouter le scraper au `ScraperFactory`
+4. Étendre les types de configuration si nécessaire
+
+### API ScreenScraper
 
 L'intégration utilise l'API v2 de ScreenScraper.fr :
 - Endpoint : `https://www.screenscraper.fr/api2/jeuInfos.php`

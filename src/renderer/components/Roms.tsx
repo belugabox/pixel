@@ -7,7 +7,7 @@ export function Roms({ system, onBack }: { system: string; onBack: () => void })
 
   useEffect(() => {
     (async () => {
-      const f: string[] = await (window as any).roms?.listFiles?.(system);
+      const f = await window.roms.listFiles(system);
       setFiles(f ?? []);
     })();
   }, [system]);
@@ -17,7 +17,7 @@ export function Roms({ system, onBack }: { system: string; onBack: () => void })
     
     setIsDownloadingAll(true);
     try {
-      await (window as any).metadata?.downloadSystem?.(system);
+      await window.metadata.downloadSystem(system);
       // Refresh the ROM tiles by triggering a re-render
       window.location.reload();
     } catch (error) {
