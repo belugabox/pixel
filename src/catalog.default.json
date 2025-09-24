@@ -6,6 +6,12 @@
       "path": "retroarch.exe",
       "args": ["-L", "{core}", "{rom}"],
       "coresPath": "cores"
+    },
+    {
+      "id": "m2emulator",
+      "name": "Model 2 Emulator",
+      "path": "m2emulator.exe",
+      "args": ["{rom}"]
     }
   ],
   "systems": [
@@ -22,6 +28,12 @@
       "extensions": [".smc", ".sfc", ".fig", ".zip"],
       "emulator": "retroarch",
       "core": "bsnes_libretro"
+    },
+    {
+      "id": "model2",
+      "name": "Sega Model 2",
+      "extensions": [".zip", ".rom", ".iso"],
+      "emulator": "m2emulator"
     }
   ]
 }

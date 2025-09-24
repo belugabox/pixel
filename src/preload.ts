@@ -39,5 +39,9 @@ contextBridge.exposeInMainWorld('catalog', {
 	get: async (): Promise<Catalog> => ipcRenderer.invoke('catalog:get'),
 });
 
+contextBridge.exposeInMainWorld('roms', {
+	list: async (): Promise<string[]> => ipcRenderer.invoke('roms:list'),
+});
+
 // See the Electron documentation for details on how to use preload scripts:
 // https://www.electronjs.org/docs/latest/tutorial/process-model#preload-scripts

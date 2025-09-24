@@ -3,6 +3,33 @@ body {
     -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial,
     sans-serif;
   margin: auto;
-  max-width: 38rem;
-  padding: 2rem;
+  max-width: 100%;
+  padding: 1rem;
+  background: #1e1e1e; 
+  color: #eee;
+}
+
+.systems-row {
+  display: flex;
+  gap: 12px;
+  overflow-x: auto;
+  padding: 8px 0;
+}
+
+.system-tile {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 160px;
+  height: 100px;
+  border-radius: 8px;
+  border: 1px solid #555;
+  background: #333;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+}
+
+.system-tile h3 {
+  margin: 0;
+  font-size: 1rem;
 }

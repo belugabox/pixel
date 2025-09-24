@@ -1,4 +1,5 @@
 import { app, BrowserWindow, ipcMain } from 'electron';
+import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import started from 'electron-squirrel-startup';
 
@@ -51,6 +52,18 @@ app.whenReady().then(async () => {
   
     ipcMain.handle('catalog:get', async () => {
       return getCatalog();
+    });
+
+    ipcMain.handle('roms:list', async () => {
+      try {
+        const cfg = await ensureConfig(userData);
+        const root = cfg.romsRoot;
+        if (!root) return [];
+        const entries = await fs.readdir(root, { withFileTypes: true });
+        return entries.filter(e => e.isDirectory()).map(e => e.name).sort();
+      } catch {
+        return [];
+      }
     });
 });
 
