@@ -100,6 +100,62 @@ app.whenReady().then(async () => {
       if (res.canceled || res.filePaths.length === 0) return null;
       return res.filePaths[0];
     });
+
+    // Metadata handlers
+    ipcMain.handle('metadata:get', async (_evt, romFileName: string, systemId: string) => {
+      try {
+        const cfg = await ensureConfig(userData);
+        if (!cfg.romsRoot) return null;
+        
+        const { ScreenScraperService } = await import('./services/screenscraper');
+        const scraper = new ScreenScraperService(
+          cfg.screenscraper?.devId,
+          cfg.screenscraper?.devPassword,
+          cfg.screenscraper?.softname,
+          cfg.screenscraper?.ssid,
+          cfg.screenscraper?.sspassword
+        );
+        
+        return await scraper.getCachedMetadata(romFileName, systemId, cfg.romsRoot);
+      } catch {
+        return null;
+      }
+    });
+
+    ipcMain.handle('metadata:download', async (_evt, romFileName: string, systemId: string) => {
+      try {
+        const cfg = await ensureConfig(userData);
+        if (!cfg.romsRoot) return null;
+        
+        const { ScreenScraperService } = await import('./services/screenscraper');
+        const scraper = new ScreenScraperService(
+          cfg.screenscraper?.devId,
+          cfg.screenscraper?.devPassword,
+          cfg.screenscraper?.softname,
+          cfg.screenscraper?.ssid,
+          cfg.screenscraper?.sspassword
+        );
+        
+        return await scraper.downloadMetadata(romFileName, systemId, cfg.romsRoot);
+      } catch (error) {
+        console.error('Error downloading metadata:', error);
+        return null;
+      }
+    });
+
+    ipcMain.handle('metadata:has', async (_evt, romFileName: string, systemId: string) => {
+      try {
+        const cfg = await ensureConfig(userData);
+        if (!cfg.romsRoot) return false;
+        
+        const { ScreenScraperService } = await import('./services/screenscraper');
+        const scraper = new ScreenScraperService();
+        
+        return await scraper.hasMetadata(romFileName, systemId, cfg.romsRoot);
+      } catch {
+        return false;
+      }
+    });
 });
 
 // Quit when all windows are closed, except on macOS. There, it's common

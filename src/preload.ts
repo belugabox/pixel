@@ -4,6 +4,13 @@ type UserConfig = {
 	romsRoot: string;
 	emulatorsRoot: string;
 	toolsRoot?: string;
+	screenscraper?: {
+		devId?: string;
+		devPassword?: string;
+		softname?: string;
+		ssid?: string;
+		sspassword?: string;
+	};
 };
 
 type Emulator = {
@@ -27,6 +34,23 @@ type Catalog = {
 	systems: System[];
 };
 
+type GameMetadata = {
+	id: string;
+	name: string;
+	description?: string;
+	releaseDate?: string;
+	genre?: string;
+	developer?: string;
+	publisher?: string;
+	players?: string;
+	rating?: string;
+	images: {
+		cover?: string;
+		screenshot?: string;
+		title?: string;
+	};
+};
+
 contextBridge.exposeInMainWorld('config', {
 	get: async (): Promise<UserConfig> => ipcRenderer.invoke('config:get'),
 	set: async (cfg: UserConfig): Promise<UserConfig> => ipcRenderer.invoke('config:set', cfg),
@@ -43,6 +67,15 @@ contextBridge.exposeInMainWorld('roms', {
 
 contextBridge.exposeInMainWorld('dialog', {
 	selectDirectory: async (): Promise<string | null> => ipcRenderer.invoke('dialog:selectDirectory'),
+});
+
+contextBridge.exposeInMainWorld('metadata', {
+	get: async (romFileName: string, systemId: string): Promise<GameMetadata | null> => 
+		ipcRenderer.invoke('metadata:get', romFileName, systemId),
+	download: async (romFileName: string, systemId: string): Promise<GameMetadata | null> => 
+		ipcRenderer.invoke('metadata:download', romFileName, systemId),
+	has: async (romFileName: string, systemId: string): Promise<boolean> => 
+		ipcRenderer.invoke('metadata:has', romFileName, systemId),
 });
 
 // See the Electron documentation for details on how to use preload scripts:

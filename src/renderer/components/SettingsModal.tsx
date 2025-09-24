@@ -6,14 +6,28 @@ export function SettingsModal({ cfg, onClose, onSave }:
   const [local, setLocal] = useState<UserConfig>({
     romsRoot: cfg?.romsRoot ?? '',
     emulatorsRoot: cfg?.emulatorsRoot ?? '',
-    toolsRoot: cfg?.toolsRoot ?? ''
+    toolsRoot: cfg?.toolsRoot ?? '',
+    screenscraper: {
+      devId: cfg?.screenscraper?.devId ?? '',
+      devPassword: cfg?.screenscraper?.devPassword ?? '',
+      softname: cfg?.screenscraper?.softname ?? 'pixel-frontend',
+      ssid: cfg?.screenscraper?.ssid ?? '',
+      sspassword: cfg?.screenscraper?.sspassword ?? ''
+    }
   });
 
   useEffect(() => {
     setLocal({
       romsRoot: cfg?.romsRoot ?? '',
       emulatorsRoot: cfg?.emulatorsRoot ?? '',
-      toolsRoot: cfg?.toolsRoot ?? ''
+      toolsRoot: cfg?.toolsRoot ?? '',
+      screenscraper: {
+        devId: cfg?.screenscraper?.devId ?? '',
+        devPassword: cfg?.screenscraper?.devPassword ?? '',
+        softname: cfg?.screenscraper?.softname ?? 'pixel-frontend',
+        ssid: cfg?.screenscraper?.ssid ?? '',
+        sspassword: cfg?.screenscraper?.sspassword ?? ''
+      }
     });
   }, [cfg]);
 
@@ -51,6 +65,55 @@ export function SettingsModal({ cfg, onClose, onSave }:
             }}>…</button>
           </div>
         </div>
+        
+        <h3>Configuration ScreenScraper</h3>
+        <div className="form-row">
+          <label htmlFor="ss-devid">Dev ID</label>
+          <input 
+            id="ss-devid" 
+            value={local.screenscraper?.devId ?? ''} 
+            onChange={(e) => setLocal({ 
+              ...local, 
+              screenscraper: { ...local.screenscraper, devId: e.target.value } 
+            })} 
+          />
+        </div>
+        <div className="form-row">
+          <label htmlFor="ss-devpassword">Dev Password</label>
+          <input 
+            id="ss-devpassword" 
+            type="password"
+            value={local.screenscraper?.devPassword ?? ''} 
+            onChange={(e) => setLocal({ 
+              ...local, 
+              screenscraper: { ...local.screenscraper, devPassword: e.target.value } 
+            })} 
+          />
+        </div>
+        <div className="form-row">
+          <label htmlFor="ss-ssid">Nom d'utilisateur ScreenScraper</label>
+          <input 
+            id="ss-ssid" 
+            value={local.screenscraper?.ssid ?? ''} 
+            onChange={(e) => setLocal({ 
+              ...local, 
+              screenscraper: { ...local.screenscraper, ssid: e.target.value } 
+            })} 
+          />
+        </div>
+        <div className="form-row">
+          <label htmlFor="ss-sspassword">Mot de passe ScreenScraper</label>
+          <input 
+            id="ss-sspassword" 
+            type="password"
+            value={local.screenscraper?.sspassword ?? ''} 
+            onChange={(e) => setLocal({ 
+              ...local, 
+              screenscraper: { ...local.screenscraper, sspassword: e.target.value } 
+            })} 
+          />
+        </div>
+        
         <div className="form-actions">
           <button type="button" onClick={onClose}>Annuler (Esc)</button>
           <button type="submit" className="primary">Enregistrer</button>
