@@ -25,7 +25,6 @@ export function Systems({ onOpen }: { onOpen: (system: string) => void }) {
     scopeSelector: '#systems-screen',
     mode: 'row',
     onOpenSettings: () => document.getElementById('settings-btn')?.click(),
-    onQuit: () => document.getElementById('quit-btn')?.click(),
     activeGuard: () => !document.getElementById('settings-modal'),
   });
 
