@@ -1,6 +1,6 @@
 {
   "name": "pixel",
-  "productName": "pixel",
+  "productName": "Pixel",
   "version": "0.0.1",
   "description": "Retrogaming frontend",
   "main": ".vite/build/main.js",
@@ -23,10 +23,7 @@
   "license": "MIT",
   "devDependencies": {
     "@electron-forge/cli": "^7.9.0",
-    "@electron-forge/maker-deb": "^7.9.0",
-    "@electron-forge/maker-rpm": "^7.9.0",
     "@electron-forge/maker-squirrel": "^7.9.0",
-    "@electron-forge/maker-zip": "^7.9.0",
     "@electron-forge/plugin-auto-unpack-natives": "^7.9.0",
     "@electron-forge/plugin-fuses": "^7.9.0",
     "@electron-forge/plugin-vite": "^7.9.0",
