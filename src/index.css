@@ -60,6 +60,10 @@ textarea {
   transform: translateY(-1px);
 }
 
+.system-tile:focus-visible {
+  outline: 2px solid #ff156d;
+}
+
 /* Settings button (top-right) */
 .settings-btn {
   position: fixed;
@@ -235,6 +239,10 @@ textarea {
 .rom-tile:hover {
   transform: translateY(-2px);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+}
+
+.rom-tile:focus-visible {
+  outline: 2px solid #ff156d;
 }
 
 .rom-cover {

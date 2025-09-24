@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { RomTile } from './RomTile';
+import { useInputNavigation } from '../hooks/useInputNavigation';
 
 export function Roms({ system, onBack }: { system: string; onBack: () => void }) {
   const [files, setFiles] = useState<string[]>([]);
@@ -12,9 +13,25 @@ export function Roms({ system, onBack }: { system: string; onBack: () => void })
     })();
   }, [system]);
 
+  useEffect(() => {
+    if (files.length > 0) {
+      const first = document.querySelector<HTMLElement>('#roms .rom-tile');
+      first?.focus();
+    }
+  }, [files]);
+
+  useInputNavigation({
+    itemSelector: '#roms .rom-tile',
+    scopeSelector: '#roms-screen',
+    mode: 'grid',
+    onBack,
+    onOpenSettings: () => document.getElementById('settings-btn')?.click(),
+    onQuit: () => document.getElementById('quit-btn')?.click(),
+  });
+
   const downloadAllMetadata = async () => {
     if (isDownloadingAll) return;
-    
+
     setIsDownloadingAll(true);
     try {
       await window.metadata.downloadSystem(system);
@@ -32,8 +49,8 @@ export function Roms({ system, onBack }: { system: string; onBack: () => void })
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
         <button id="back-btn" className="back-btn" onClick={onBack}>‹ Retour</button>
         <h2 id="roms-title" style={{ margin: '0 0 0 auto' }}>ROMs - {system} ({files.length})</h2>
-        <button 
-          className="download-all-btn" 
+        <button
+          className="download-all-btn"
           onClick={downloadAllMetadata}
           disabled={isDownloadingAll}
         >
