@@ -156,3 +156,117 @@ button, input, select, textarea {
   opacity: 0.8;
   padding: 12px;
 }
+
+/* ROM Grid Layout */
+.roms-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 16px;
+  padding: 16px 0;
+}
+
+.rom-tile {
+  display: flex;
+  flex-direction: row;
+  background: #333;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.rom-tile:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+}
+
+.rom-cover {
+  width: 80px;
+  height: 120px;
+  object-fit: cover;
+  flex-shrink: 0;
+  background: #222;
+}
+
+.rom-info {
+  flex: 1;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.rom-title {
+  font-size: 0.7rem;
+  margin: 0;
+  line-height: 1.2;
+  color: #fff;
+}
+
+.rom-description {
+  font-size: 0.5rem;
+  line-height: 1.4;
+  color: #ccc;
+  margin: 0;
+  flex: 1;
+}
+
+.rom-details {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 0.45rem;
+  color: #aaa;
+}
+
+.rom-developer,
+.rom-date,
+.rom-genre {
+  display: block;
+}
+
+.download-metadata-btn {
+  background: #FF156D;
+  color: #fff;
+  border: 0;
+  padding: 6px 10px;
+  font-size: 0.45rem;
+  cursor: pointer;
+  border-radius: 4px;
+  align-self: flex-start;
+  margin-top: auto;
+}
+
+.download-metadata-btn:hover {
+  background: #e0135c;
+}
+
+.download-metadata-btn:disabled {
+  background: #666;
+  cursor: not-allowed;
+}
+
+.download-all-btn {
+  background: #4CAF50;
+  color: #fff;
+  border: 0;
+  padding: 8px 12px;
+  font-size: 0.5rem;
+  cursor: pointer;
+  border-radius: 4px;
+}
+
+.download-all-btn:hover:not(:disabled) {
+  background: #45a049;
+}
+
+.download-all-btn:disabled {
+  background: #666;
+  cursor: not-allowed;
+}
+
+.error-message {
+  font-size: 0.4rem;
+  color: #ff6b6b;
+  margin-top: 4px;
+}

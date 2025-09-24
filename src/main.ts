@@ -100,6 +100,72 @@ app.whenReady().then(async () => {
       if (res.canceled || res.filePaths.length === 0) return null;
       return res.filePaths[0];
     });
+
+    // Metadata handlers
+    ipcMain.handle('metadata:get', async (_evt, romFileName: string, systemId: string) => {
+      try {
+        const cfg = await ensureConfig(userData);
+        if (!cfg.romsRoot) return null;
+        
+        const { MetadataService } = await import('./services/metadata-service');
+        const service = new MetadataService({
+          screenscraper: cfg.scrapers?.screenscraper
+        });
+        
+        return await service.getMetadata(romFileName, systemId, cfg.romsRoot);
+      } catch {
+        return null;
+      }
+    });
+
+    ipcMain.handle('metadata:download', async (_evt, romFileName: string, systemId: string) => {
+      try {
+        const cfg = await ensureConfig(userData);
+        if (!cfg.romsRoot) return null;
+        
+        const { MetadataService } = await import('./services/metadata-service');
+        const service = new MetadataService({
+          screenscraper: cfg.scrapers?.screenscraper
+        });
+        
+        return await service.downloadMetadata(romFileName, systemId, cfg.romsRoot);
+      } catch (error) {
+        console.error('Error downloading metadata:', error);
+        return null;
+      }
+    });
+
+    ipcMain.handle('metadata:has', async (_evt, romFileName: string, systemId: string) => {
+      try {
+        const cfg = await ensureConfig(userData);
+        if (!cfg.romsRoot) return false;
+        
+        const { MetadataService } = await import('./services/metadata-service');
+        const service = new MetadataService({
+          screenscraper: cfg.scrapers?.screenscraper
+        });
+        
+        return await service.hasMetadata(romFileName, systemId, cfg.romsRoot);
+      } catch {
+        return false;
+      }
+    });
+
+    ipcMain.handle('metadata:downloadSystem', async (_evt, systemId: string, onProgress?: (current: number, total: number, fileName: string) => void) => {
+      try {
+        const cfg = await ensureConfig(userData);
+        if (!cfg.romsRoot) return;
+        
+        const { MetadataService } = await import('./services/metadata-service');
+        const service = new MetadataService({
+          screenscraper: cfg.scrapers?.screenscraper
+        });
+        
+        await service.downloadSystemMetadata(systemId, cfg.romsRoot, onProgress);
+      } catch (error) {
+        console.error('Error downloading system metadata:', error);
+      }
+    });
 });
 
 // Quit when all windows are closed, except on macOS. There, it's common

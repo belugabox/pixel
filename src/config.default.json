@@ -1,5 +1,11 @@
 {
   "romsRoot": "",
   "emulatorsRoot": "",
-  "toolsRoot": ""
+  "toolsRoot": "",
+  "scrapers": {
+    "screenscraper": {
+      "ssid": "",
+      "sspassword": ""
+    }
+  }
 }

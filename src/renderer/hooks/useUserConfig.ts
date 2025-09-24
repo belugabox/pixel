@@ -5,14 +5,14 @@ export function useUserConfig() {
   const [cfg, setCfg] = useState<UserConfig | null>(null);
 
   const refresh = async () => {
-    const c = await (window as any).config.get();
+    const c = await window.config.get();
     setCfg(c);
   };
 
   useEffect(() => { void refresh(); }, []);
 
   const save = async (next: UserConfig) => {
-    await (window as any).config.set(next);
+    await window.config.set(next);
     await refresh();
   };
 
