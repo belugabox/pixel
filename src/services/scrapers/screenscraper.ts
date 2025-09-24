@@ -22,9 +22,6 @@ interface ScreenScraperMedia {
 }
 
 export interface ScreenScraperCredentials extends ScraperCredentials {
-  devId?: string;
-  devPassword?: string;
-  softname?: string;
   ssid?: string;
   sspassword?: string;
 }
@@ -44,9 +41,6 @@ export class ScreenScraperScraper extends BaseScraper {
       const cleanName = this.cleanRomName(romFileName);
       
       const params = new URLSearchParams({
-        devid: this.credentials.devId || '',
-        devpassword: this.credentials.devPassword || '',
-        softname: this.credentials.softname || 'pixel-frontend',
         output: 'json',
         recherche: cleanName,
         systemeid: this.getSystemId(systemId) || systemId

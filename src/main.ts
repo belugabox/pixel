@@ -109,7 +109,7 @@ app.whenReady().then(async () => {
         
         const { MetadataService } = await import('./services/metadata-service');
         const service = new MetadataService({
-          screenscraper: cfg.screenscraper
+          screenscraper: cfg.scrapers?.screenscraper
         });
         
         return await service.getMetadata(romFileName, systemId, cfg.romsRoot);
@@ -125,7 +125,7 @@ app.whenReady().then(async () => {
         
         const { MetadataService } = await import('./services/metadata-service');
         const service = new MetadataService({
-          screenscraper: cfg.screenscraper
+          screenscraper: cfg.scrapers?.screenscraper
         });
         
         return await service.downloadMetadata(romFileName, systemId, cfg.romsRoot);
@@ -142,7 +142,7 @@ app.whenReady().then(async () => {
         
         const { MetadataService } = await import('./services/metadata-service');
         const service = new MetadataService({
-          screenscraper: cfg.screenscraper
+          screenscraper: cfg.scrapers?.screenscraper
         });
         
         return await service.hasMetadata(romFileName, systemId, cfg.romsRoot);
@@ -158,7 +158,7 @@ app.whenReady().then(async () => {
         
         const { MetadataService } = await import('./services/metadata-service');
         const service = new MetadataService({
-          screenscraper: cfg.screenscraper
+          screenscraper: cfg.scrapers?.screenscraper
         });
         
         await service.downloadSystemMetadata(systemId, cfg.romsRoot, onProgress);

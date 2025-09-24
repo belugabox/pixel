@@ -18,8 +18,21 @@ Pour utiliser ScreenScraper, vous devez configurer vos identifiants dans les par
 
 1. Ouvrir les paramètres (Échap ou bouton ⚙️)
 2. Remplir la section "Configuration ScreenScraper" :
-   - **Dev ID** et **Dev Password** : Identifiants développeur (optionnels mais recommandés)
-   - **Nom d'utilisateur** et **Mot de passe** : Vos identifiants ScreenScraper.fr
+   - **Nom d'utilisateur** : Votre nom d'utilisateur ScreenScraper.fr
+   - **Mot de passe** : Votre mot de passe ScreenScraper.fr
+
+La configuration est stockée dans le fichier `config.json` sous la structure suivante :
+
+```json
+{
+  "scrapers": {
+    "screenscraper": {
+      "ssid": "votre_nom_utilisateur",
+      "sspassword": "votre_mot_de_passe"
+    }
+  }
+}
+```
 
 ## Structure des métadonnées
 

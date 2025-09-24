@@ -7,12 +7,11 @@ export function SettingsModal({ cfg, onClose, onSave }:
     romsRoot: cfg?.romsRoot ?? '',
     emulatorsRoot: cfg?.emulatorsRoot ?? '',
     toolsRoot: cfg?.toolsRoot ?? '',
-    screenscraper: {
-      devId: cfg?.screenscraper?.devId ?? '',
-      devPassword: cfg?.screenscraper?.devPassword ?? '',
-      softname: cfg?.screenscraper?.softname ?? 'pixel-frontend',
-      ssid: cfg?.screenscraper?.ssid ?? '',
-      sspassword: cfg?.screenscraper?.sspassword ?? ''
+    scrapers: {
+      screenscraper: {
+        ssid: cfg?.scrapers?.screenscraper?.ssid ?? '',
+        sspassword: cfg?.scrapers?.screenscraper?.sspassword ?? ''
+      }
     }
   });
 
@@ -21,12 +20,11 @@ export function SettingsModal({ cfg, onClose, onSave }:
       romsRoot: cfg?.romsRoot ?? '',
       emulatorsRoot: cfg?.emulatorsRoot ?? '',
       toolsRoot: cfg?.toolsRoot ?? '',
-      screenscraper: {
-        devId: cfg?.screenscraper?.devId ?? '',
-        devPassword: cfg?.screenscraper?.devPassword ?? '',
-        softname: cfg?.screenscraper?.softname ?? 'pixel-frontend',
-        ssid: cfg?.screenscraper?.ssid ?? '',
-        sspassword: cfg?.screenscraper?.sspassword ?? ''
+      scrapers: {
+        screenscraper: {
+          ssid: cfg?.scrapers?.screenscraper?.ssid ?? '',
+          sspassword: cfg?.scrapers?.screenscraper?.sspassword ?? ''
+        }
       }
     });
   }, [cfg]);
@@ -68,36 +66,19 @@ export function SettingsModal({ cfg, onClose, onSave }:
         
         <h3>Configuration ScreenScraper</h3>
         <div className="form-row">
-          <label htmlFor="ss-devid">Dev ID</label>
-          <input 
-            id="ss-devid" 
-            value={local.screenscraper?.devId ?? ''} 
-            onChange={(e) => setLocal({ 
-              ...local, 
-              screenscraper: { ...local.screenscraper, devId: e.target.value } 
-            })} 
-          />
-        </div>
-        <div className="form-row">
-          <label htmlFor="ss-devpassword">Dev Password</label>
-          <input 
-            id="ss-devpassword" 
-            type="password"
-            value={local.screenscraper?.devPassword ?? ''} 
-            onChange={(e) => setLocal({ 
-              ...local, 
-              screenscraper: { ...local.screenscraper, devPassword: e.target.value } 
-            })} 
-          />
-        </div>
-        <div className="form-row">
           <label htmlFor="ss-ssid">Nom d'utilisateur ScreenScraper</label>
           <input 
             id="ss-ssid" 
-            value={local.screenscraper?.ssid ?? ''} 
+            value={local.scrapers?.screenscraper?.ssid ?? ''} 
             onChange={(e) => setLocal({ 
               ...local, 
-              screenscraper: { ...local.screenscraper, ssid: e.target.value } 
+              scrapers: { 
+                ...local.scrapers, 
+                screenscraper: { 
+                  ...local.scrapers?.screenscraper, 
+                  ssid: e.target.value 
+                } 
+              }
             })} 
           />
         </div>
@@ -106,10 +87,16 @@ export function SettingsModal({ cfg, onClose, onSave }:
           <input 
             id="ss-sspassword" 
             type="password"
-            value={local.screenscraper?.sspassword ?? ''} 
+            value={local.scrapers?.screenscraper?.sspassword ?? ''} 
             onChange={(e) => setLocal({ 
               ...local, 
-              screenscraper: { ...local.screenscraper, sspassword: e.target.value } 
+              scrapers: { 
+                ...local.scrapers, 
+                screenscraper: { 
+                  ...local.scrapers?.screenscraper, 
+                  sspassword: e.target.value 
+                } 
+              }
             })} 
           />
         </div>

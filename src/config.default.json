@@ -2,11 +2,10 @@
   "romsRoot": "",
   "emulatorsRoot": "",
   "toolsRoot": "",
-  "screenscraper": {
-    "devId": "",
-    "devPassword": "",
-    "softname": "pixel-frontend",
-    "ssid": "",
-    "sspassword": ""
+  "scrapers": {
+    "screenscraper": {
+      "ssid": "",
+      "sspassword": ""
+    }
   }
 }
