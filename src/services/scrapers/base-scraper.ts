@@ -158,6 +158,7 @@ export abstract class BaseScraper {
     systemId: string,
     romsRoot: string,
     onProgress?: (current: number, total: number, fileName: string) => void,
+    opts?: { force?: boolean },
   ): Promise<void> {
     try {
       const { promises: fs } = await import("node:fs");
@@ -173,10 +174,16 @@ export abstract class BaseScraper {
         current++;
         onProgress?.(current, romFiles.length, romFile);
 
-        // Skip if metadata already exists
-        const hasExisting = await this.hasMetadata(romFile, systemId, romsRoot);
-        if (hasExisting) {
-          continue;
+        // Skip if metadata already exists unless forcing re-scrape
+        if (!opts?.force) {
+          const hasExisting = await this.hasMetadata(
+            romFile,
+            systemId,
+            romsRoot,
+          );
+          if (hasExisting) {
+            continue;
+          }
         }
 
         // Download metadata with a small delay to avoid rate limiting

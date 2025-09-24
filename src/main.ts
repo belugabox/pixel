@@ -293,13 +293,35 @@ app.whenReady().then(async () => {
     },
   );
 
+  ipcMain.handle("metadata:downloadSystem", async (evt, systemId: string) => {
+    try {
+      const cfg = await ensureConfig(userData);
+      if (!cfg.romsRoot) return;
+      const service = new MetadataService({
+        screenscraper: cfg.scrapers?.screenscraper,
+        igdb: cfg.scrapers?.igdb,
+      });
+
+      await service.downloadSystemMetadata(
+        systemId,
+        cfg.romsRoot,
+        (current, total, fileName) => {
+          evt.sender.send("metadata:progress", {
+            systemId,
+            current,
+            total,
+            fileName,
+          });
+        },
+      );
+    } catch (error) {
+      console.error("Error downloading system metadata:", error);
+    }
+  });
+
   ipcMain.handle(
-    "metadata:downloadSystem",
-    async (
-      _evt,
-      systemId: string,
-      onProgress?: (current: number, total: number, fileName: string) => void,
-    ) => {
+    "metadata:downloadAll",
+    async (evt, opts?: { force?: boolean }) => {
       try {
         const cfg = await ensureConfig(userData);
         if (!cfg.romsRoot) return;
@@ -307,14 +329,24 @@ app.whenReady().then(async () => {
           screenscraper: cfg.scrapers?.screenscraper,
           igdb: cfg.scrapers?.igdb,
         });
-
-        await service.downloadSystemMetadata(
-          systemId,
-          cfg.romsRoot,
-          onProgress,
-        );
+        const catalog = getCatalog();
+        for (const sys of catalog.systems) {
+          await service.downloadSystemMetadata(
+            sys.id,
+            cfg.romsRoot,
+            (current, total, fileName) => {
+              evt.sender.send("metadata:progress", {
+                systemId: sys.id,
+                current,
+                total,
+                fileName,
+              });
+            },
+            opts,
+          );
+        }
       } catch (error) {
-        console.error("Error downloading system metadata:", error);
+        console.error("Error downloading all metadata:", error);
       }
     },
   );

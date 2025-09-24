@@ -83,6 +83,15 @@ declare global {
       ): Promise<GameMetadata | null>;
       has(romFileName: string, systemId: string): Promise<boolean>;
       downloadSystem(systemId: string): Promise<void>;
+      downloadAll(opts?: { force?: boolean }): Promise<void>;
+      onProgress(
+        handler: (payload: {
+          systemId: string;
+          current: number;
+          total: number;
+          fileName: string;
+        }) => void,
+      ): () => void;
     };
     app: {
       quit(): Promise<void>;

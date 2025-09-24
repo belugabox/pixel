@@ -95,6 +95,28 @@ contextBridge.exposeInMainWorld("metadata", {
     ipcRenderer.invoke("metadata:has", romFileName, systemId),
   downloadSystem: async (systemId: string): Promise<void> =>
     ipcRenderer.invoke("metadata:downloadSystem", systemId),
+  downloadAll: async (opts?: { force?: boolean }): Promise<void> =>
+    ipcRenderer.invoke("metadata:downloadAll", opts),
+  onProgress: (
+    handler: (payload: {
+      systemId: string;
+      current: number;
+      total: number;
+      fileName: string;
+    }) => void,
+  ): (() => void) => {
+    const listener = (
+      _evt: Electron.IpcRendererEvent,
+      payload: {
+        systemId: string;
+        current: number;
+        total: number;
+        fileName: string;
+      },
+    ) => handler(payload);
+    ipcRenderer.on("metadata:progress", listener);
+    return () => ipcRenderer.removeListener("metadata:progress", listener);
+  },
 });
 
 // See the Electron documentation for details on how to use preload scripts:

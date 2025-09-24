@@ -53,9 +53,10 @@ export class MetadataService {
     systemId: string,
     romsRoot: string,
     onProgress?: (current: number, total: number, fileName: string) => void,
+    opts?: { force?: boolean },
   ): Promise<void> {
     const scraper = ScraperFactory.getScraper(this.defaultScraper, this.config);
-    return scraper.downloadSystemMetadata(systemId, romsRoot, onProgress);
+    return scraper.downloadSystemMetadata(systemId, romsRoot, onProgress, opts);
   }
 
   /**

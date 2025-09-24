@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useInputNavigation } from '../hooks/useInputNavigation';
 import type { UserConfig } from '../types';
+import { useToast } from './Toast';
 
 export function SettingsModal({ cfg, onClose, onSave }:
   { cfg: UserConfig | null; onClose: () => void; onSave: (c: UserConfig) => void }) {
@@ -24,7 +25,16 @@ export function SettingsModal({ cfg, onClose, onSave }:
     }
   });
 
-  const [section, setSection] = useState<'menu' | 'configuration' | 'scrapers' | 'quitter'>('menu');
+  const [section, setSection] = useState<'menu' | 'configuration' | 'scrapers' | 'scraping' | 'quitter'>('menu');
+  const [isScraping, setIsScraping] = useState(false);
+  const [confirmForce, setConfirmForce] = useState(false);
+  const { show } = useToast();
+  const [progress, setProgress] = useState<{ systemId: string; current: number; total: number; fileName: string } | null>(null);
+
+  useEffect(() => {
+    const off = window.metadata.onProgress((p) => setProgress(p));
+    return () => off();
+  }, []);
 
   const normalize = (c: UserConfig | null) => ({
     romsRoot: c?.romsRoot ?? '',
@@ -84,14 +94,14 @@ export function SettingsModal({ cfg, onClose, onSave }:
     scopeSelector: '.modal-content',
     mode: 'list',
     onBack: () => setSection('menu'),
-    activeGuard: () => section === 'configuration' || section === 'scrapers',
+    activeGuard: () => section === 'configuration' || section === 'scrapers' || section === 'scraping',
   });
 
   useEffect(() => {
     if (section === 'menu') {
       const first = document.querySelector<HTMLElement>('#settings-menu .menu-item');
       first?.focus();
-    } else if (section === 'configuration' || section === 'scrapers') {
+    } else if (section === 'configuration' || section === 'scrapers' || section === 'scraping') {
       const firstField = document.querySelector<HTMLElement>('.settings-content input, .settings-content select, .settings-content button');
       firstField?.focus();
     }
@@ -154,6 +164,10 @@ export function SettingsModal({ cfg, onClose, onSave }:
           <button className="menu-item" tabIndex={0} onClick={() => setSection('scrapers')}>
             <div className="menu-title">Scrapers</div>
             <div className="menu-desc">Scraper par défaut, IGDB, ScreenScraper</div>
+          </button>
+          <button className="menu-item" tabIndex={0} onClick={() => setSection('scraping')}>
+            <div className="menu-title">Scraping</div>
+            <div className="menu-desc">Lancer le scraping global (manquants ou tout)</div>
           </button>
           <button className="menu-item" tabIndex={0} onClick={() => window.app.quit()}>
             <div className="menu-title">Quitter</div>
@@ -350,6 +364,76 @@ export function SettingsModal({ cfg, onClose, onSave }:
                   }
                 })}
               />
+            </div>
+          </>
+        )}
+
+        {section === 'scraping' && (
+          <>
+            <h3>Scraping global</h3>
+            <p>Déclencher le scraping des métadonnées pour toute la bibliothèque.</p>
+            {progress && (
+              <div className="form-row" style={{ width: '100%' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem' }}>
+                  <span>Système: {progress.systemId}</span>
+                  <span>{progress.current}/{progress.total}</span>
+                </div>
+                <div style={{ background: '#2b2b2b', height: 8, borderRadius: 4, overflow: 'hidden' }}>
+                  <div style={{ width: `${Math.max(0, Math.min(100, progress.total ? (progress.current / progress.total) * 100 : 0))}%`, height: '100%', background: '#ff156d' }} />
+                </div>
+                <div style={{ fontSize: '0.6rem', opacity: 0.8, marginTop: 4, wordBreak: 'break-all' }}>ROM: {progress.fileName}</div>
+              </div>
+            )}
+            <div className="form-row" style={{ gap: 8, alignItems: 'flex-start', flexDirection: 'column' }}>
+              <button
+                type="button"
+                disabled={isScraping}
+                onClick={async () => {
+                  try {
+                    setIsScraping(true);
+                    show('Scraping démarré: ROMs sans métadonnées');
+                    await window.metadata.downloadAll({ force: false });
+                    show('Scraping terminé (ROMs sans métadonnées)');
+                    setProgress(null);
+                  } catch (e) {
+                    console.error(e);
+                    show('Erreur lors du scraping (voir console).', 'error');
+                  } finally {
+                    setIsScraping(false);
+                  }
+                }}
+              >
+                Scraper uniquement les ROMs sans métadonnées
+              </button>
+              <button
+                type="button"
+                className="secondary"
+                disabled={isScraping}
+                onClick={async () => {
+                  if (!confirmForce) {
+                    setConfirmForce(true);
+                    show('Cliquez à nouveau pour confirmer le re-scraping total');
+                    // Reset confirmation after a short delay
+                    setTimeout(() => setConfirmForce(false), 4000);
+                    return;
+                  }
+                  try {
+                    setIsScraping(true);
+                    setConfirmForce(false);
+                    show('Re-scraping démarré: toutes les ROMs');
+                    await window.metadata.downloadAll({ force: true });
+                    show('Re-scraping terminé (toutes les ROMs)');
+                    setProgress(null);
+                  } catch (e) {
+                    console.error(e);
+                    show('Erreur lors du re-scraping (voir console).', 'error');
+                  } finally {
+                    setIsScraping(false);
+                  }
+                }}
+              >
+                {confirmForce ? 'Confirmer: re-scraper TOUT' : 'Re-scraper toutes les ROMs (forcer)'}
+              </button>
             </div>
           </>
         )}
