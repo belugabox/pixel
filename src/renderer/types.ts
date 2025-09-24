@@ -3,14 +3,22 @@ export type UserConfig = {
   emulatorsRoot: string;
   toolsRoot?: string;
   scrapers?: {
+    default?: "igdb" | "screenscraper";
     screenscraper?: {
       ssid?: string;
       sspassword?: string;
+      devid?: string;
+      devpassword?: string;
+      softname?: string;
+    };
+    igdb?: {
+      clientId?: string;
+      clientSecret?: string;
     };
   };
 };
 
-export type View = { name: 'systems' } | { name: 'roms'; system: string };
+export type View = { name: "systems" } | { name: "roms"; system: string };
 
 export type GameMetadata = {
   id: string;
@@ -65,7 +73,10 @@ declare global {
     };
     metadata: {
       get(romFileName: string, systemId: string): Promise<GameMetadata | null>;
-      download(romFileName: string, systemId: string): Promise<GameMetadata | null>;
+      download(
+        romFileName: string,
+        systemId: string,
+      ): Promise<GameMetadata | null>;
       has(romFileName: string, systemId: string): Promise<boolean>;
       downloadSystem(systemId: string): Promise<void>;
     };

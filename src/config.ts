@@ -1,7 +1,7 @@
-import { promises as fs } from 'node:fs';
-import path from 'node:path';
-import defaultCfg from './config.default.json';
-import catalogDefault from './catalog.default.json';
+import { promises as fs } from "node:fs";
+import path from "node:path";
+import defaultCfg from "./config.default.json";
+import catalogDefault from "./catalog.default.json";
 
 export interface Emulator {
   id: string;
@@ -24,9 +24,17 @@ export interface UserConfig {
   emulatorsRoot: string;
   toolsRoot?: string;
   scrapers?: {
+    default?: "igdb" | "screenscraper";
     screenscraper?: {
       ssid?: string;
       sspassword?: string;
+      devid?: string;
+      devpassword?: string;
+      softname?: string;
+    };
+    igdb?: {
+      clientId?: string;
+      clientSecret?: string;
     };
   };
 }
@@ -39,28 +47,45 @@ export const defaultConfig: UserConfig = defaultCfg as UserConfig;
 export const defaultCatalog: CatalogConfig = catalogDefault as CatalogConfig;
 
 export function getConfigPath(userDataPath: string) {
-  return path.join(userDataPath, 'config.json');
+  return path.join(userDataPath, "config.json");
 }
 
 export async function ensureConfig(userDataPath: string): Promise<UserConfig> {
   const cfgPath = getConfigPath(userDataPath);
   try {
-    const raw = await fs.readFile(cfgPath, 'utf-8');
+    const raw = await fs.readFile(cfgPath, "utf-8");
     try {
       const parsed = JSON.parse(raw) as Partial<UserConfig>;
+      // Migration: strip obsolete IGDB token fields
+      let mutated = false;
+      if (parsed?.scrapers?.igdb) {
+        const igdb = parsed.scrapers.igdb as Record<string, unknown>;
+        if ("accessToken" in igdb) {
+          delete igdb["accessToken"];
+          mutated = true;
+        }
+        if ("accessTokenExpiresAt" in igdb) {
+          delete igdb["accessTokenExpiresAt"];
+          mutated = true;
+        }
+      }
       // Merge with defaults to ensure new fields are present
-      return {
+      const merged = {
         ...defaultConfig,
-        ...parsed
+        ...parsed,
       } as UserConfig;
+      if (mutated) {
+        await saveConfig(userDataPath, merged);
+      }
+      return merged;
     } catch (parseErr) {
       // Backup invalid file then write defaults
-      await fs.writeFile(cfgPath + '.bak', raw, 'utf-8');
+      await fs.writeFile(cfgPath + ".bak", raw, "utf-8");
       await saveConfig(userDataPath, defaultConfig);
       return defaultConfig;
     }
   } catch (err: unknown) {
-    if (err && (err as NodeJS.ErrnoException).code === 'ENOENT') {
+    if (err && (err as NodeJS.ErrnoException).code === "ENOENT") {
       await saveConfig(userDataPath, defaultConfig);
       return defaultConfig;
     }
@@ -69,12 +94,15 @@ export async function ensureConfig(userDataPath: string): Promise<UserConfig> {
   }
 }
 
-export async function saveConfig(userDataPath: string, cfg: UserConfig): Promise<void> {
+export async function saveConfig(
+  userDataPath: string,
+  cfg: UserConfig,
+): Promise<void> {
   const cfgPath = getConfigPath(userDataPath);
   const dir = path.dirname(cfgPath);
   await fs.mkdir(dir, { recursive: true });
-  const tmp = cfgPath + '.tmp';
-  await fs.writeFile(tmp, JSON.stringify(cfg, null, 2), 'utf-8');
+  const tmp = cfgPath + ".tmp";
+  await fs.writeFile(tmp, JSON.stringify(cfg, null, 2), "utf-8");
   await fs.rename(tmp, cfgPath);
 }
 

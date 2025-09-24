@@ -15,7 +15,7 @@
     "émulateurs",
     "retrogaming"
   ],
-  "git.inputValidation": "always",
+  "git.inputValidation": true,
   "git.inputValidationLength": 72,
   "git.inputValidationSubjectLength": 50,
   "workbench.editor.highlightModifiedTabs": true,

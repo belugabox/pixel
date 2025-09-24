@@ -18,17 +18,33 @@ Pour utiliser ScreenScraper, vous devez configurer vos identifiants dans les par
 
 1. Ouvrir les paramètres (Échap ou bouton ⚙️)
 2. Remplir la section "Configuration ScreenScraper" :
-   - **Nom d'utilisateur** : Votre nom d'utilisateur ScreenScraper.fr
-   - **Mot de passe** : Votre mot de passe ScreenScraper.fr
 
 La configuration est stockée dans le fichier `config.json` sous la structure suivante :
+
+Pour IGDB, fournissez votre `Client ID` et `Client Secret` (Twitch). L'application récupère automatiquement un jeton via le flux `client_credentials`.
+
+Configuration côté `config.json` :
+
+```json
+{
+  "scrapers": {
+    "igdb": {
+      "clientId": "votre_client_id",
+      "clientSecret": "votre_client_secret"
+    }
+  }
+}
+```
 
 ```json
 {
   "scrapers": {
     "screenscraper": {
       "ssid": "votre_nom_utilisateur",
-      "sspassword": "votre_mot_de_passe"
+      "sspassword": "votre_mot_de_passe",
+      "devid": "",
+      "devpassword": "",
+      "softname": "pixel"
     }
   }
 }
@@ -142,7 +158,16 @@ Pour ajouter un nouveau scraper :
 ### API ScreenScraper
 
 L'intégration utilise l'API v2 de ScreenScraper.fr :
-- Endpoint : `https://www.screenscraper.fr/api2/jeuInfos.php`
+
+- Recherche : `https://www.screenscraper.fr/api2/jeuRecherche.php`
+- Détails par jeu : `https://www.screenscraper.fr/api2/jeuInfos.php`
 - Format : JSON
-- Recherche par nom de fichier ROM nettoyé
-- Support des identifiants développeur et utilisateur
+- Recherche par nom de fichier ROM nettoyé, puis récupération par `jeuid`
+- Support des identifiants développeur et utilisateur (`ssid`/`sspassword`, `devid`/`devpassword`, `softname`)
+
+### Dépannage (erreur 400)
+
+- Vérifiez que `softname` est fourni (défaut: `pixel`).
+- Si possible, renseignez `devid` et `devpassword` pour un accès plus fiable.
+- Assurez-vous que `ssid` et `sspassword` sont corrects et non vides.
+- L'API nécessite un `User-Agent` et respecte un délai entre requêtes (géré par l'appli).

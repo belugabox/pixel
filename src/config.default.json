@@ -3,9 +3,17 @@
   "emulatorsRoot": "",
   "toolsRoot": "",
   "scrapers": {
+    "default": "igdb",
     "screenscraper": {
       "ssid": "",
-      "sspassword": ""
+      "sspassword": "",
+      "devid": "",
+      "devpassword": "",
+      "softname": "pixel"
+    },
+    "igdb": {
+      "clientId": "",
+      "clientSecret": ""
     }
   }
 }
