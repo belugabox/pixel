@@ -102,7 +102,7 @@ export function useGamepadStatus() {
       }
 
       if (active) {
-        timeoutId = window.setTimeout(checkGlobalWatcher, 2000);
+        timeoutId = window.setTimeout(checkGlobalWatcher, 5000);
       }
     };
 
