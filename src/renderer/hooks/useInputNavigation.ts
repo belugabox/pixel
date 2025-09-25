@@ -207,25 +207,54 @@ export function useInputNavigation(opts: InputNavOptions) {
         return;
       }
       const gps = navigator.getGamepads?.() || [];
-      const gp = gps.find((g) => g && g.connected && g.mapping === "standard");
+      const connectedGamepads = gps.filter((g) => g && g.connected && g.mapping === "standard");
       const now = performance.now();
-      if (gp) {
-        const btn = (i: number) => gp.buttons[i]?.pressed;
-        const movedRecently = now - lastMoveAtRef.current < repeatDelay;
+      
+      // Check all connected gamepads for input, use the first one with active input
+      let activeGamepad: Gamepad | null = null;
+      let wantUp = false, wantDown = false, wantLeft = false, wantRight = false;
+      const btnStates: { [key: number]: boolean } = {};
+      
+      for (const gp of connectedGamepads) {
+        if (!gp) continue;
+        
+        const btn = (i: number) => gp.buttons[i]?.pressed || false;
+        const axisX = gp.axes[0] || 0;
+        const axisY = gp.axes[1] || 0;
+        const dead = 0.4;
 
         const dpadUp = btn(12);
         const dpadDown = btn(13);
         const dpadLeft = btn(14);
         const dpadRight = btn(15);
 
-        const axisX = gp.axes[0] || 0;
-        const axisY = gp.axes[1] || 0;
-        const dead = 0.4;
+        const gpWantUp = dpadUp || axisY < -dead;
+        const gpWantDown = dpadDown || axisY > dead;
+        const gpWantLeft = dpadLeft || axisX < -dead;
+        const gpWantRight = dpadRight || axisX > dead;
+        
+        // Check if this gamepad has any input
+        const hasDirectionalInput = gpWantUp || gpWantDown || gpWantLeft || gpWantRight;
+        const hasButtonInput = btn(0) || btn(1) || btn(8) || btn(9); // A, B, Select, Start
+        
+        if (hasDirectionalInput || hasButtonInput) {
+          activeGamepad = gp;
+          wantUp = gpWantUp;
+          wantDown = gpWantDown;
+          wantLeft = gpWantLeft;
+          wantRight = gpWantRight;
+          
+          // Store button states for this active gamepad
+          btnStates[0] = btn(0); // A
+          btnStates[1] = btn(1); // B
+          btnStates[8] = btn(8); // Select
+          btnStates[9] = btn(9); // Start
+          break; // Use the first gamepad with input
+        }
+      }
 
-        const wantUp = dpadUp || axisY < -dead;
-        const wantDown = dpadDown || axisY > dead;
-        const wantLeft = dpadLeft || axisX < -dead;
-        const wantRight = dpadRight || axisX > dead;
+      if (activeGamepad) {
+        const movedRecently = now - lastMoveAtRef.current < repeatDelay;
 
         if (!movedRecently) {
           if (wantLeft) {
@@ -243,7 +272,7 @@ export function useInputNavigation(opts: InputNavOptions) {
           }
         }
 
-        if (btn(0)) {
+        if (btnStates[0]) {
           // Bouton A (validation)
           const nowPress = now;
           const canActivateTime = nowPress > ignoreActivationsBeforeRef.current;
@@ -262,19 +291,19 @@ export function useInputNavigation(opts: InputNavOptions) {
           heldRef.current["A"] = false;
         }
 
-        if (btn(1)) {
+        if (btnStates[1]) {
           // B
           if (!heldRef.current["B"]) opts.onBack?.();
           heldRef.current["B"] = true;
         } else heldRef.current["B"] = false;
 
-        if (btn(9)) {
+        if (btnStates[9]) {
           // Start
           if (!heldRef.current["Start"]) opts.onOpenSettings?.();
           heldRef.current["Start"] = true;
         } else heldRef.current["Start"] = false;
 
-        if (btn(8)) {
+        if (btnStates[8]) {
           // Select/Back
           if (!heldRef.current["Select"]) opts.onQuit?.();
           heldRef.current["Select"] = true;
