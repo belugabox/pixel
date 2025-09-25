@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { useInputNavigation } from '../hooks/useInputNavigation';
 import type { UserConfig } from '../types';
 import { useToast } from './Toast';
+import { ManettesSection } from './ManettesSection';
 
 export function SettingsModal({ cfg, onClose, onSave }:
   { cfg: UserConfig | null; onClose: () => void; onSave: (c: UserConfig) => void }) {
@@ -25,7 +26,7 @@ export function SettingsModal({ cfg, onClose, onSave }:
     }
   });
 
-  const [section, setSection] = useState<'menu' | 'configuration' | 'scrapers' | 'scraping' | 'quitter'>('menu');
+  const [section, setSection] = useState<'menu' | 'configuration' | 'scrapers' | 'scraping' | 'manettes' | 'quitter'>('menu');
   const [isScraping, setIsScraping] = useState(false);
   const [confirmForce, setConfirmForce] = useState(false);
   const { show } = useToast();
@@ -94,14 +95,14 @@ export function SettingsModal({ cfg, onClose, onSave }:
     scopeSelector: '.modal-content',
     mode: 'list',
     onBack: () => setSection('menu'),
-    activeGuard: () => section === 'configuration' || section === 'scrapers' || section === 'scraping',
+    activeGuard: () => section === 'configuration' || section === 'scrapers' || section === 'scraping' || section === 'manettes',
   });
 
   useEffect(() => {
     if (section === 'menu') {
       const first = document.querySelector<HTMLElement>('#settings-menu .menu-item');
       first?.focus();
-    } else if (section === 'configuration' || section === 'scrapers' || section === 'scraping') {
+    } else if (section === 'configuration' || section === 'scrapers' || section === 'scraping' || section === 'manettes') {
       const firstField = document.querySelector<HTMLElement>('.settings-content input, .settings-content select, .settings-content button');
       firstField?.focus();
     }
@@ -168,6 +169,10 @@ export function SettingsModal({ cfg, onClose, onSave }:
           <button className="menu-item" tabIndex={0} onClick={() => setSection('scraping')}>
             <div className="menu-title">Scraping</div>
             <div className="menu-desc">Lancer le scraping global (manquants ou tout)</div>
+          </button>
+          <button className="menu-item" tabIndex={0} onClick={() => setSection('manettes')}>
+            <div className="menu-title">Manettes</div>
+            <div className="menu-desc">Manettes connectées et statut XInput natif</div>
           </button>
           <button className="menu-item" tabIndex={0} onClick={() => window.app.quit()}>
             <div className="menu-title">Quitter</div>
@@ -436,6 +441,10 @@ export function SettingsModal({ cfg, onClose, onSave }:
               </button>
             </div>
           </>
+        )}
+
+        {section === 'manettes' && (
+          <ManettesSection />
         )}
 
         {section === 'quitter' && (

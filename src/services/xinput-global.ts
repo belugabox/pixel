@@ -23,6 +23,7 @@ export function startGlobalComboWatcher() {
     return;
   }
   started = true;
+  console.log("[xinput-global] Starting global combo watcher...");
 
   try {
     const watcher = createWatcher(() => {
@@ -43,6 +44,7 @@ export function startGlobalComboWatcher() {
     }
     watcher.start();
     activeNative = true;
+    console.log("[xinput-global] Global combo watcher started successfully!");
     stopFn = () => {
       watcher.stop();
     };
