@@ -121,6 +121,15 @@ export default function App() {
     return () => document.removeEventListener('keydown', onKey);
   }, [showSettings, view]);
 
+  // Appliquer le thème depuis la configuration
+  useEffect(() => {
+    if (cfg?.theme) {
+      document.body.setAttribute('data-theme', cfg.theme);
+    } else {
+      document.body.setAttribute('data-theme', 'retro');
+    }
+  }, [cfg?.theme]);
+
   return (
     <main>
       <h1>Pixel</h1>

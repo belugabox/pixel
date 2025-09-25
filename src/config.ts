@@ -24,6 +24,7 @@ export interface UserConfig {
   romsRoot: string;
   emulatorsRoot: string;
   toolsRoot?: string;
+  theme?: "retro" | "abstract";
   scrapers?: {
     default?: "igdb" | "screenscraper";
     screenscraper?: {

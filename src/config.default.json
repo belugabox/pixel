@@ -2,6 +2,7 @@
   "romsRoot": "",
   "emulatorsRoot": "",
   "toolsRoot": "",
+  "theme": "retro",
   "scrapers": {
     "default": "igdb",
     "screenscraper": {
