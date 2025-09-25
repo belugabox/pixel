@@ -15,6 +15,10 @@ export type InputNavOptions = {
 export function useInputNavigation(opts: InputNavOptions) {
   const heldRef = useRef<{ [key: string]: boolean }>({});
   const lastMoveAtRef = useRef<number>(0);
+  const lastActivateAtRef = useRef<number>(0);
+  const ignoreActivationsBeforeRef = useRef<number>(0);
+  const ACTIVATION_COOLDOWN_MS = 220; // évite double validation lors de transitions d'écran
+  const INITIAL_IGNORE_MS = 250; // ignore les activations tout de suite après montage (changement d'écran)
 
   const getItems = (): HTMLElement[] => {
     const scope = opts.scopeSelector
@@ -179,6 +183,8 @@ export function useInputNavigation(opts: InputNavOptions) {
   useEffect(() => {
     let raf = 0;
     const repeatDelay = 150; // ms between repeat moves
+    // Début période d'ignorance des activations (A/Enter) pour absorber un appui maintenu
+    ignoreActivationsBeforeRef.current = performance.now() + INITIAL_IGNORE_MS;
 
     const poll = () => {
       // Determine if this handler should be active
@@ -232,14 +238,23 @@ export function useInputNavigation(opts: InputNavOptions) {
         }
 
         if (btn(0)) {
-          // A
-          if (!heldRef.current["A"]) {
+          // Bouton A (validation)
+          const nowPress = now;
+          const canActivateTime = nowPress > ignoreActivationsBeforeRef.current;
+          const cooldownOk =
+            nowPress - lastActivateAtRef.current > ACTIVATION_COOLDOWN_MS;
+          if (!heldRef.current["A"] && canActivateTime && cooldownOk) {
             const idx = getFocusedIndex();
             const el = getItems()[idx];
-            el?.click();
+            if (el) {
+              el.click();
+              lastActivateAtRef.current = nowPress;
+            }
           }
           heldRef.current["A"] = true;
-        } else heldRef.current["A"] = false;
+        } else {
+          heldRef.current["A"] = false;
+        }
 
         if (btn(1)) {
           // B
