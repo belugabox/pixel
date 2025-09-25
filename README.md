@@ -47,6 +47,12 @@ where MSBuild.exe
 npm run build:native   # compile puis copie automatique du binaire dans dist-native
 ```
 
+Test rapide (interaction):
+
+```cmd
+npm run test:xinput   # attend 10s un combo Start+Back et affiche le résultat
+```
+
 Le binaire attendu : `native/xinput/build/Release/xinput_native.node`.
 
 Chargement dynamique géré par `src/services/xinput-native-addon.ts`; utilisation dans `src/services/xinput-global.ts`.
@@ -64,6 +70,8 @@ Dans la console (process principal ou renderer selon l'intégration), appeler `i
 ### Migration (historique)
 
 Les versions précédentes utilisaient `ffi-napi` + `ref-napi`. Des problèmes de compilation (notamment l'erreur libffi `call "call"`) sur certains environnements ont motivé l'écriture d'un binding dédié. Toute la logique de fallback FFI a été supprimée; si vous voyez encore des références FFI dans un fork local, rebasez sur `main`.
+
+Le script historique `rebuild:natives` a été retiré (il n'apportait qu'un message). Utilisez uniquement `npm run build:native`.
 
 ### Prochaines étapes possibles
 

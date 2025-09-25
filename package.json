@@ -12,7 +12,8 @@
     "lint": "eslint --ext .ts,.tsx .",
     "test:screenscraper": "npx ts-node --project tsconfig.ts-node.json scripts/test-screenscraper.ts",
     "build:native": "cd native/xinput && node-gyp rebuild && npm run copy:native",
-    "copy:native": "node scripts/copy-native.js"
+    "copy:native": "node scripts/copy-native.js",
+    "test:xinput": "node scripts/test-xinput.js"
   },
   "keywords": [],
   "author": {

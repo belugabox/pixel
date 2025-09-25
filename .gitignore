@@ -90,3 +90,10 @@ typings/
 
 # Electron-Forge
 out/
+
+# Native addon build artifacts
+native/xinput/build/
+
+# Copied native binaries (générés par build:native). Garder en repo ? Actuellement nécessaire pour packaging.
+# Si plus tard build en CI uniquement, on pourra ignorer :
+# dist-native/
