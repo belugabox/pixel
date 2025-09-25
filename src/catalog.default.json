@@ -19,6 +19,7 @@
       "id": "neogeo",
       "name": "Neo Geo",
       "extensions": [".zip", ".neo"],
+      "exclude": ["neogeo.zip"],
       "emulator": "retroarch",
       "core": "fbneo_libretro"
     },

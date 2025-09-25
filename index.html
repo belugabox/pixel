@@ -3,12 +3,56 @@
   <head>
     <meta charset="UTF-8" />
     <title>Pixel</title>
+    <link rel="preload" as="image" href="/src/assets/background/retro-bg.jpg" />
+    <style>
+      body {
+        margin: 0;
+        padding: 0;
+        max-width: 100%;
+        background: #1e1e1e url("./assets/background/retro-bg.jpg") center/cover
+          fixed no-repeat;
+        position: relative;
+        color: #eee;
+      }
+
+      body::before {
+        content: "";
+        position: fixed;
+        inset: 0;
+        background:
+          radial-gradient(
+            circle at 50% 55%,
+            rgba(0, 0, 0, 0) 0%,
+            rgba(0, 0, 0, 0.45) 55%,
+            rgba(0, 0, 0, 0.65) 100%
+          ),
+          linear-gradient(rgba(0, 0, 0, 0.18), rgba(0, 0, 0, 0.55));
+        pointer-events: none;
+        z-index: 0;
+      }
+    </style>
   </head>
-  <body style="background: #1e1e1e; color: #eee; margin: 0; padding: 0;">
-    <div id="preloader" aria-hidden="true" style="display:flex;align-items:center;justify-content:center;height:100vh;">
-      <div style="width:120px;height:120px;background: center/contain no-repeat url('data:image/svg+xml,<svg xmlns=&quot;http://www.w3.org/2000/svg&quot; viewBox=&quot;0 0 200 200&quot;><rect fill=&quot;%23FF156D&quot; stroke=&quot;%23FF156D&quot; stroke-width=&quot;10&quot; width=&quot;30&quot; height=&quot;30&quot; x=&quot;25&quot; y=&quot;85&quot;><animate attributeName=&quot;opacity&quot; calcMode=&quot;spline&quot; dur=&quot;2&quot; values=&quot;1;0;1;&quot; keySplines=&quot;.5 0 .5 1;.5 0 .5 1&quot; repeatCount=&quot;indefinite&quot; begin=&quot;-.4&quot;></animate></rect><rect fill=&quot;%23FF156D&quot; stroke=&quot;%23FF156D&quot; stroke-width=&quot;10&quot; width=&quot;30&quot; height=&quot;30&quot; x=&quot;85&quot; y=&quot;85&quot;><animate attributeName=&quot;opacity&quot; calcMode=&quot;spline&quot; dur=&quot;2&quot; values=&quot;1;0;1;&quot; keySplines=&quot;.5 0 .5 1;.5 0 .5 1&quot; repeatCount=&quot;indefinite&quot; begin=&quot;-.2&quot;></animate></rect><rect fill=&quot;%23FF156D&quot; stroke=&quot;%23FF156D&quot; stroke-width=&quot;10&quot; width=&quot;30&quot; height=&quot;30&quot; x=&quot;145&quot; y=&quot;85&quot;><animate attributeName=&quot;opacity&quot; calcMode=&quot;spline&quot; dur=&quot;2&quot; values=&quot;1;0;1;&quot; keySplines=&quot;.5 0 .5 1;.5 0 .5 1&quot; repeatCount=&quot;indefinite&quot; begin=&quot;0&quot;></animate></rect></svg>')"></div>
+  <body>
+    <div
+      id="preloader"
+      aria-hidden="true"
+      style="
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100vh;
+      "
+    >
+      <div
+        style="
+          width: 120px;
+          height: 120px;
+          background: center/contain no-repeat
+            url('data:image/svg+xml,<svg xmlns=&quot;http://www.w3.org/2000/svg&quot; viewBox=&quot;0 0 200 200&quot;><rect fill=&quot;%23FF156D&quot; stroke=&quot;%23FF156D&quot; stroke-width=&quot;10&quot; width=&quot;30&quot; height=&quot;30&quot; x=&quot;25&quot; y=&quot;85&quot;><animate attributeName=&quot;opacity&quot; calcMode=&quot;spline&quot; dur=&quot;2&quot; values=&quot;1;0;1;&quot; keySplines=&quot;.5 0 .5 1;.5 0 .5 1&quot; repeatCount=&quot;indefinite&quot; begin=&quot;-.4&quot;></animate></rect><rect fill=&quot;%23FF156D&quot; stroke=&quot;%23FF156D&quot; stroke-width=&quot;10&quot; width=&quot;30&quot; height=&quot;30&quot; x=&quot;85&quot; y=&quot;85&quot;><animate attributeName=&quot;opacity&quot; calcMode=&quot;spline&quot; dur=&quot;2&quot; values=&quot;1;0;1;&quot; keySplines=&quot;.5 0 .5 1;.5 0 .5 1&quot; repeatCount=&quot;indefinite&quot; begin=&quot;-.2&quot;></animate></rect><rect fill=&quot;%23FF156D&quot; stroke=&quot;%23FF156D&quot; stroke-width=&quot;10&quot; width=&quot;30&quot; height=&quot;30&quot; x=&quot;145&quot; y=&quot;85&quot;><animate attributeName=&quot;opacity&quot; calcMode=&quot;spline&quot; dur=&quot;2&quot; values=&quot;1;0;1;&quot; keySplines=&quot;.5 0 .5 1;.5 0 .5 1&quot; repeatCount=&quot;indefinite&quot; begin=&quot;0&quot;></animate></rect></svg>');
+        "
+      ></div>
     </div>
-    <div id="app" style="display:none"></div>
+    <div id="app" style="display: none"></div>
     <script type="module" src="/src/renderer.ts"></script>
   </body>
 </html>

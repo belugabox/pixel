@@ -20,6 +20,7 @@ export default function App() {
   const [debugPad, setDebugPad] = useState(false);
   const [padState, setPadState] = useState<{ ts: number; pads: Array<{ index: number; id: string; buttons: boolean[]; select: boolean; start: boolean }> }>({ ts: 0, pads: [] });
   const [globalWatcher, setGlobalWatcher] = useState<boolean | null>(null);
+  const [lastSystemIndex, setLastSystemIndex] = useState<number>(0);
 
   // Detect Start+Select (typical buttons 9 + 8, with alternative indices) + optional debug overlay
   useEffect(() => {
@@ -141,7 +142,13 @@ export default function App() {
         </div>
       )}
       {view.name === 'systems' && (
-        <Systems onOpen={(sys) => setView({ name: 'roms', system: sys })} />
+        <Systems
+          initialIndex={lastSystemIndex}
+          onOpen={(sys, index) => {
+            setLastSystemIndex(index);
+            setView({ name: 'roms', system: sys });
+          }}
+        />
       )}
       {view.name === 'roms' && (
         <Roms system={view.system} onBack={() => setView({ name: 'systems' })} />

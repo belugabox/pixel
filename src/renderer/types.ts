@@ -51,6 +51,7 @@ export type Catalog = {
     extensions: string[];
     emulator: string;
     core: string;
+    exclude?: string[];
   }>;
 };
 

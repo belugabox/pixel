@@ -1,4 +1,16 @@
-import { app, BrowserWindow, ipcMain, dialog, globalShortcut } from "electron";
+// Import electron via require to avoid TS module resolution issue in this environment
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const {
+  app,
+  BrowserWindow,
+  ipcMain,
+  dialog,
+  globalShortcut,
+} = require("electron");
+// Minimal event type (opaque) for IPC invoke handlers
+interface IPCEventLike {
+  sender: { send: (channel: string, ...args: unknown[]) => void };
+}
 import { spawn } from "node:child_process";
 import { MetadataService } from "./services/metadata-service";
 import { promises as fs } from "node:fs";
@@ -55,7 +67,7 @@ app.whenReady().then(async () => {
     return ensureConfig(userData);
   });
 
-  ipcMain.handle("config:set", async (_evt, cfg: UserConfig) => {
+  ipcMain.handle("config:set", async (_evt: IPCEventLike, cfg: UserConfig) => {
     await saveConfig(userData, cfg);
     return cfg;
   });
@@ -89,38 +101,43 @@ app.whenReady().then(async () => {
     }
   });
 
-  ipcMain.handle("roms:listFiles", async (_evt, systemFolder: string) => {
-    try {
-      const cfg = await ensureConfig(userData);
-      const root = cfg.romsRoot;
-      if (!root) return [];
-      const dir = path.join(root, systemFolder);
-      const entries = await fs.readdir(dir, { withFileTypes: true });
+  ipcMain.handle(
+    "roms:listFiles",
+    async (_evt: IPCEventLike, systemFolder: string) => {
+      try {
+        const cfg = await ensureConfig(userData);
+        const root = cfg.romsRoot;
+        if (!root) return [];
+        const dir = path.join(root, systemFolder);
+        const entries = await fs.readdir(dir, { withFileTypes: true });
 
-      const catalog = getCatalog();
-      const sys = catalog.systems.find(
-        (s) => s.id.toLowerCase() === String(systemFolder).toLowerCase(),
-      );
-      const allowed = sys?.extensions?.map((e) => e.toLowerCase()) ?? null;
+        const catalog = getCatalog();
+        const sys = catalog.systems.find(
+          (s) => s.id.toLowerCase() === String(systemFolder).toLowerCase(),
+        );
+        const allowed = sys?.extensions?.map((e) => e.toLowerCase()) ?? null;
+        const excluded = sys?.exclude?.map((e) => e.toLowerCase()) ?? [];
 
-      return entries
-        .filter((e) => e.isFile())
-        .map((e) => e.name)
-        .filter((name) => {
-          if (!allowed) return true;
-          const ext = path.extname(name).toLowerCase();
-          return allowed.includes(ext);
-        })
-        .sort();
-    } catch {
-      return [];
-    }
-  });
+        return entries
+          .filter((e) => e.isFile())
+          .map((e) => e.name)
+          .filter((name) => {
+            if (!allowed) return true;
+            const ext = path.extname(name).toLowerCase();
+            return allowed.includes(ext);
+          })
+          .filter((name) => !excluded.includes(name.toLowerCase()))
+          .sort();
+      } catch {
+        return [];
+      }
+    },
+  );
 
   ipcMain.handle(
     "roms:launch",
     async (
-      _evt,
+      _evt: IPCEventLike,
       systemId: string,
       romFileName: string,
     ): Promise<{ ok: true } | { ok: false; error: string }> => {
@@ -272,7 +289,7 @@ app.whenReady().then(async () => {
   // Metadata handlers
   ipcMain.handle(
     "metadata:get",
-    async (_evt, romFileName: string, systemId: string) => {
+    async (_evt: IPCEventLike, romFileName: string, systemId: string) => {
       try {
         const cfg = await ensureConfig(userData);
         if (!cfg.romsRoot) return null;
@@ -290,7 +307,7 @@ app.whenReady().then(async () => {
 
   ipcMain.handle(
     "metadata:download",
-    async (_evt, romFileName: string, systemId: string) => {
+    async (_evt: IPCEventLike, romFileName: string, systemId: string) => {
       try {
         const cfg = await ensureConfig(userData);
         if (!cfg.romsRoot) return null;
@@ -313,7 +330,7 @@ app.whenReady().then(async () => {
 
   ipcMain.handle(
     "metadata:has",
-    async (_evt, romFileName: string, systemId: string) => {
+    async (_evt: IPCEventLike, romFileName: string, systemId: string) => {
       try {
         const cfg = await ensureConfig(userData);
         if (!cfg.romsRoot) return false;
@@ -329,35 +346,38 @@ app.whenReady().then(async () => {
     },
   );
 
-  ipcMain.handle("metadata:downloadSystem", async (evt, systemId: string) => {
-    try {
-      const cfg = await ensureConfig(userData);
-      if (!cfg.romsRoot) return;
-      const service = new MetadataService({
-        screenscraper: cfg.scrapers?.screenscraper,
-        igdb: cfg.scrapers?.igdb,
-      });
+  ipcMain.handle(
+    "metadata:downloadSystem",
+    async (evt: IPCEventLike, systemId: string) => {
+      try {
+        const cfg = await ensureConfig(userData);
+        if (!cfg.romsRoot) return;
+        const service = new MetadataService({
+          screenscraper: cfg.scrapers?.screenscraper,
+          igdb: cfg.scrapers?.igdb,
+        });
 
-      await service.downloadSystemMetadata(
-        systemId,
-        cfg.romsRoot,
-        (current, total, fileName) => {
-          evt.sender.send("metadata:progress", {
-            systemId,
-            current,
-            total,
-            fileName,
-          });
-        },
-      );
-    } catch (error) {
-      console.error("Error downloading system metadata:", error);
-    }
-  });
+        await service.downloadSystemMetadata(
+          systemId,
+          cfg.romsRoot,
+          (current, total, fileName) => {
+            evt.sender.send("metadata:progress", {
+              systemId,
+              current,
+              total,
+              fileName,
+            });
+          },
+        );
+      } catch (error) {
+        console.error("Error downloading system metadata:", error);
+      }
+    },
+  );
 
   ipcMain.handle(
     "metadata:downloadAll",
-    async (evt, opts?: { force?: boolean }) => {
+    async (evt: IPCEventLike, opts?: { force?: boolean }) => {
       try {
         const cfg = await ensureConfig(userData);
         if (!cfg.romsRoot) return;
@@ -390,7 +410,7 @@ app.whenReady().then(async () => {
   // Load a local image file (outside of served bundle) and return a data URI
   ipcMain.handle(
     "image:load",
-    async (_evt, absPath: string): Promise<string | null> => {
+    async (_evt: IPCEventLike, absPath: string): Promise<string | null> => {
       try {
         const data = await fs.readFile(absPath);
         const ext = path.extname(absPath).toLowerCase();

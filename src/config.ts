@@ -17,6 +17,7 @@ export interface System {
   extensions: string[];
   emulator: string; // references Emulator.id
   core: string; // core identifier (ex: "fbneo_libretro")
+  exclude?: string[]; // list of file names to ignore when scanning (case-insensitive)
 }
 
 export interface UserConfig {

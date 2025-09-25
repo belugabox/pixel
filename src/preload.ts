@@ -26,6 +26,7 @@ type System = {
   extensions: string[];
   emulator: string;
   core: string;
+  exclude?: string[];
 };
 
 type Catalog = {

@@ -6,6 +6,7 @@ export type InputNavOptions = {
   itemSelector: string;
   scopeSelector?: string;
   mode: "row" | "grid" | "list";
+  wrapRow?: boolean; // allow circular navigation in row mode
   onBack?: () => void;
   onOpenSettings?: () => void;
   onQuit?: () => void;
@@ -50,8 +51,13 @@ export function useInputNavigation(opts: InputNavOptions) {
     const items = getItems();
     if (items.length === 0) return;
     const delta = dir === "left" ? -1 : 1;
-    const next = Math.max(0, Math.min(idx + delta, items.length - 1));
-    focusIndex(next);
+    if (opts.wrapRow) {
+      const next = (idx + delta + items.length) % items.length;
+      focusIndex(next);
+    } else {
+      const next = Math.max(0, Math.min(idx + delta, items.length - 1));
+      focusIndex(next);
+    }
   };
 
   const moveGrid = (dir: Direction) => {
