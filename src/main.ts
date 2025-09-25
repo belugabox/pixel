@@ -62,7 +62,11 @@ const createWindow = () => {
 app.on("ready", () => {
   createWindow();
   // Start XInput global watcher immediately when app is ready
-  startGlobalComboWatcher();
+  try {
+    startGlobalComboWatcher();
+  } catch (e) {
+    console.warn("[xinput] Failed to initialize global combo watcher:", e);
+  }
   onXInputCombo(() => {
     // Mirror renderer combo behavior: kill active emulator
     try {
