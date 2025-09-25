@@ -470,7 +470,7 @@ export function SettingsModal({ cfg, onClose, onSave }:
                 <option value="abstract">Abstract - Moderne et coloré</option>
               </select>
             </div>
-            <div style={{ fontSize: '0.6rem', opacity: 0.8, marginTop: '8px' }}>
+            <div className="theme-help-text">
               Les changements de thème sont appliqués immédiatement. Enregistrez pour conserver vos préférences.
             </div>
           </>
