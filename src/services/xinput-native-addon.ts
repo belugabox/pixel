@@ -15,7 +15,7 @@ function tryRequire(path: string) {
     console.log(`[xinput-native] Attempting require("${path}")`);
     return require(path);
   } catch (e) {
-    console.log(`[xinput-native] Failed to require "${path}":`, e?.message || e);
+    console.log(`[xinput-native] Failed to require "${path}":`, e.message || String(e));
     return null;
   }
 }
