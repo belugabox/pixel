@@ -69,6 +69,23 @@ contextBridge.exposeInMainWorld("roms", {
     romFileName: string,
   ): Promise<{ ok: true } | { ok: false; error: string }> =>
     ipcRenderer.invoke("roms:launch", systemId, romFileName),
+  killActive: async (): Promise<{ ok: boolean; error?: string }> =>
+    ipcRenderer.invoke("roms:killActive"),
+  onEmulatorTerminated: (handler: () => void): (() => void) => {
+    const listener = () => handler();
+    ipcRenderer.on("emulator:terminated", listener);
+    return () => ipcRenderer.removeListener("emulator:terminated", listener);
+  },
+});
+
+contextBridge.exposeInMainWorld("gamepad", {
+  onGlobalCombo: (handler: () => void): (() => void) => {
+    const listener = () => handler();
+    ipcRenderer.on("gamepad:combo", listener);
+    return () => ipcRenderer.removeListener("gamepad:combo", listener);
+  },
+  isGlobalActive: async (): Promise<boolean> =>
+    ipcRenderer.invoke("gamepad:isGlobalActive"),
 });
 
 contextBridge.exposeInMainWorld("dialog", {

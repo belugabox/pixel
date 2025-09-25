@@ -1,9 +1,14 @@
-import { app, BrowserWindow, ipcMain, dialog } from "electron";
+import { app, BrowserWindow, ipcMain, dialog, globalShortcut } from "electron";
 import { spawn } from "node:child_process";
 import { MetadataService } from "./services/metadata-service";
 import { promises as fs } from "node:fs";
 import path from "node:path";
 import started from "electron-squirrel-startup";
+import {
+  startGlobalComboWatcher,
+  onCombo as onXInputCombo,
+  isGlobalWatcherActive,
+} from "./services/xinput-global";
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (started) {
@@ -62,6 +67,12 @@ app.whenReady().then(async () => {
   ipcMain.handle("app:quit", async () => {
     app.quit();
   });
+
+  ipcMain.handle("gamepad:isGlobalActive", async () => {
+    return isGlobalWatcherActive();
+  });
+
+  let currentEmulator: import("node:child_process").ChildProcess | null = null;
 
   ipcMain.handle("roms:list", async () => {
     try {
@@ -217,6 +228,10 @@ app.whenReady().then(async () => {
           stdio: "ignore",
         });
         child.unref();
+        currentEmulator = child;
+        child.once("exit", () => {
+          if (currentEmulator === child) currentEmulator = null;
+        });
         return { ok: true };
       } catch (e) {
         console.error("Failed to launch ROM:", e);
@@ -224,6 +239,27 @@ app.whenReady().then(async () => {
       }
     },
   );
+
+  ipcMain.handle("roms:killActive", async () => {
+    try {
+      if (currentEmulator && !currentEmulator.killed) {
+        const pid = currentEmulator.pid;
+        // On Windows, use process.kill; detached child will receive signal
+        try {
+          currentEmulator.kill();
+        } catch (e) {
+          console.warn("Kill failed (IPC):", e);
+        }
+        currentEmulator = null;
+        console.log("[roms:killActive] Killed emulator pid", pid);
+        return { ok: true };
+      }
+      return { ok: false, error: "Aucun émulateur actif" };
+    } catch (e) {
+      console.error("Failed to kill emulator:", e);
+      return { ok: false, error: "Échec de l'arrêt" };
+    }
+  });
 
   ipcMain.handle("dialog:selectDirectory", async () => {
     const res = await dialog.showOpenDialog({
@@ -370,6 +406,55 @@ app.whenReady().then(async () => {
       }
     },
   );
+
+  // Register a global shortcut to kill active emulator
+  const registerShortcut = () => {
+    const combo = "CommandOrControl+Shift+Q";
+    if (globalShortcut.isRegistered(combo)) globalShortcut.unregister(combo);
+    const ok = globalShortcut.register(combo, () => {
+      if (currentEmulator && !currentEmulator.killed) {
+        try {
+          currentEmulator.kill();
+        } catch (e) {
+          console.warn("Kill failed (shortcut):", e);
+        }
+        console.log("[globalShortcut] Emulator terminated via shortcut");
+        currentEmulator = null;
+        const win = BrowserWindow.getAllWindows()[0];
+        win?.webContents.send("emulator:terminated");
+      }
+    });
+    if (!ok)
+      console.warn("Failed to register global shortcut for emulator quit");
+  };
+  registerShortcut();
+  // Start native (Windows) global gamepad watcher (Option B)
+  startGlobalComboWatcher();
+  onXInputCombo(() => {
+    // Mirror renderer combo behavior: kill active emulator
+    try {
+      if (currentEmulator && !currentEmulator.killed) {
+        try {
+          currentEmulator.kill();
+        } catch (e) {
+          console.warn("Kill failed (xinput combo):", e);
+        }
+        console.log("[xinput] Emulator terminated via Start+Select");
+        currentEmulator = null;
+        const win = BrowserWindow.getAllWindows()[0];
+        win?.webContents.send("emulator:terminated");
+        win?.webContents.send("gamepad:combo");
+      } else {
+        const win = BrowserWindow.getAllWindows()[0];
+        win?.webContents.send("gamepad:combo");
+      }
+    } catch (e) {
+      console.warn("[xinput] combo handling error", e);
+    }
+  });
+  app.on("will-quit", () => {
+    globalShortcut.unregisterAll();
+  });
 });
 
 // Quit when all windows are closed, except on macOS. There, it's common

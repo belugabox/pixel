@@ -71,6 +71,8 @@ declare global {
         systemId: string,
         romFileName: string,
       ): Promise<{ ok: true } | { ok: false; error: string }>;
+      killActive(): Promise<{ ok: boolean; error?: string }>;
+      onEmulatorTerminated(handler: () => void): () => void;
     };
     dialog: {
       selectDirectory(): Promise<string | null>;
@@ -98,6 +100,10 @@ declare global {
     };
     app: {
       quit(): Promise<void>;
+    };
+    gamepad: {
+      onGlobalCombo(handler: () => void): () => void;
+      isGlobalActive(): Promise<boolean>;
     };
   }
 }
