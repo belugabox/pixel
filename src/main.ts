@@ -22,6 +22,9 @@ import {
   isGlobalWatcherActive,
 } from "./services/xinput-global";
 
+// Global emulator reference for XInput combo handling
+let currentEmulator: import("node:child_process").ChildProcess | null = null;
+
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (started) {
   app.quit();
@@ -56,7 +59,33 @@ const createWindow = () => {
 // This method will be called when Electron has finished
 // initialization and is ready to create browser windows.
 // Some APIs can only be used after this event occurs.
-app.on("ready", createWindow);
+app.on("ready", () => {
+  createWindow();
+  // Start XInput global watcher immediately when app is ready
+  startGlobalComboWatcher();
+  onXInputCombo(() => {
+    // Mirror renderer combo behavior: kill active emulator
+    try {
+      if (currentEmulator && !currentEmulator.killed) {
+        try {
+          currentEmulator.kill();
+        } catch (e) {
+          console.warn("Kill failed (xinput combo):", e);
+        }
+        console.log("[xinput] Emulator terminated via Start+Select");
+        currentEmulator = null;
+        const win = BrowserWindow.getAllWindows()[0];
+        win?.webContents.send("emulator:terminated");
+        win?.webContents.send("gamepad:combo");
+      } else {
+        const win = BrowserWindow.getAllWindows()[0];
+        win?.webContents.send("gamepad:combo");
+      }
+    } catch (e) {
+      console.warn("[xinput] combo handling error", e);
+    }
+  });
+});
 
 // IPC config handlers
 app.whenReady().then(async () => {
@@ -83,8 +112,6 @@ app.whenReady().then(async () => {
   ipcMain.handle("gamepad:isGlobalActive", async () => {
     return isGlobalWatcherActive();
   });
-
-  let currentEmulator: import("node:child_process").ChildProcess | null = null;
 
   ipcMain.handle("roms:list", async () => {
     try {
@@ -448,30 +475,6 @@ app.whenReady().then(async () => {
       console.warn("Failed to register global shortcut for emulator quit");
   };
   registerShortcut();
-  // Start native (Windows) global gamepad watcher (Option B)
-  startGlobalComboWatcher();
-  onXInputCombo(() => {
-    // Mirror renderer combo behavior: kill active emulator
-    try {
-      if (currentEmulator && !currentEmulator.killed) {
-        try {
-          currentEmulator.kill();
-        } catch (e) {
-          console.warn("Kill failed (xinput combo):", e);
-        }
-        console.log("[xinput] Emulator terminated via Start+Select");
-        currentEmulator = null;
-        const win = BrowserWindow.getAllWindows()[0];
-        win?.webContents.send("emulator:terminated");
-        win?.webContents.send("gamepad:combo");
-      } else {
-        const win = BrowserWindow.getAllWindows()[0];
-        win?.webContents.send("gamepad:combo");
-      }
-    } catch (e) {
-      console.warn("[xinput] combo handling error", e);
-    }
-  });
   app.on("will-quit", () => {
     globalShortcut.unregisterAll();
   });
