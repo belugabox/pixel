@@ -21,6 +21,7 @@ export function RomTile({ fileName, systemId }: RomTileProps) {
     const normalized = absPath.replace(/\\/g, '/');
     return 'file:///' + encodeURI(normalized);
   };
+  const isRemote = (url: string | undefined | null) => !!url && /^(https?:)?\/\//i.test(url);
 
   useEffect(() => {
     (async () => {
@@ -36,13 +37,25 @@ export function RomTile({ fileName, systemId }: RomTileProps) {
   }, [fileName, systemId]);
 
   useEffect(() => {
-    if (metadata?.images?.cover) {
-      setCoverSrc(toFileUrl(metadata.images.cover));
-      setFallbackIndex(0);
-    } else {
-      setFallbackIndex(0);
-      setCoverSrc(`systems/${systemId}.${fallbackExts[0]}`);
-    }
+    (async () => {
+      if (metadata?.images?.cover) {
+        if (isRemote(metadata.images.cover)) {
+          setCoverSrc(metadata.images.cover);
+        } else {
+          // Load via IPC as data URI
+            const dataUri = await window.image.load(metadata.images.cover);
+            if (dataUri) {
+              setCoverSrc(dataUri);
+            } else {
+              setCoverSrc(toFileUrl(metadata.images.cover));
+            }
+        }
+        setFallbackIndex(0);
+      } else {
+        setFallbackIndex(0);
+        setCoverSrc(`systems/${systemId}.${fallbackExts[0]}`);
+      }
+    })();
   }, [metadata, systemId]);
 
   const launch = async () => {

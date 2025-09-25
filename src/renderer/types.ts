@@ -93,6 +93,9 @@ declare global {
         }) => void,
       ): () => void;
     };
+    image: {
+      load(absPath: string): Promise<string | null>;
+    };
     app: {
       quit(): Promise<void>;
     };

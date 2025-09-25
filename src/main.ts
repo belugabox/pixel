@@ -350,6 +350,26 @@ app.whenReady().then(async () => {
       }
     },
   );
+
+  // Load a local image file (outside of served bundle) and return a data URI
+  ipcMain.handle(
+    "image:load",
+    async (_evt, absPath: string): Promise<string | null> => {
+      try {
+        const data = await fs.readFile(absPath);
+        const ext = path.extname(absPath).toLowerCase();
+        let mime = "image/jpeg";
+        if (ext === ".png") mime = "image/png";
+        else if (ext === ".webp") mime = "image/webp";
+        else if (ext === ".gif") mime = "image/gif";
+        else if (ext === ".jpg" || ext === ".jpeg") mime = "image/jpeg";
+        return `data:${mime};base64,${data.toString("base64")}`;
+      } catch (e) {
+        console.error("Failed to load image:", absPath, e);
+        return null;
+      }
+    },
+  );
 });
 
 // Quit when all windows are closed, except on macOS. There, it's common
