@@ -102,7 +102,7 @@ export function SettingsModal({ cfg, onClose, onSave }:
     if (section === 'menu') {
       const first = document.querySelector<HTMLElement>('#settings-menu .menu-item');
       first?.focus();
-    } else if (section === 'configuration' || section === 'scrapers' || section === 'scraping') {
+    } else if (section === 'configuration' || section === 'scrapers' || section === 'scraping' || section === 'manettes') {
       const firstField = document.querySelector<HTMLElement>('.settings-content input, .settings-content select, .settings-content button');
       firstField?.focus();
     }
