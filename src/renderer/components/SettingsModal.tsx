@@ -10,6 +10,7 @@ export function SettingsModal({ cfg, onClose, onSave }:
     romsRoot: cfg?.romsRoot ?? '',
     emulatorsRoot: cfg?.emulatorsRoot ?? '',
     toolsRoot: cfg?.toolsRoot ?? '',
+    theme: cfg?.theme ?? 'retro',
     scrapers: {
       default: cfg?.scrapers?.default ?? 'igdb',
       screenscraper: {
@@ -26,7 +27,7 @@ export function SettingsModal({ cfg, onClose, onSave }:
     }
   });
 
-  const [section, setSection] = useState<'menu' | 'configuration' | 'scrapers' | 'scraping' | 'manettes' | 'quitter'>('menu');
+  const [section, setSection] = useState<'menu' | 'configuration' | 'scrapers' | 'scraping' | 'themes' | 'manettes' | 'quitter'>('menu');
   const [isScraping, setIsScraping] = useState(false);
   const [confirmForce, setConfirmForce] = useState(false);
   const { show } = useToast();
@@ -41,6 +42,7 @@ export function SettingsModal({ cfg, onClose, onSave }:
     romsRoot: c?.romsRoot ?? '',
     emulatorsRoot: c?.emulatorsRoot ?? '',
     toolsRoot: c?.toolsRoot ?? '',
+    theme: c?.theme ?? 'retro',
     scrapers: {
       default: c?.scrapers?.default ?? 'igdb',
       igdb: {
@@ -95,14 +97,14 @@ export function SettingsModal({ cfg, onClose, onSave }:
     scopeSelector: '.modal-content',
     mode: 'list',
     onBack: () => setSection('menu'),
-    activeGuard: () => section === 'configuration' || section === 'scrapers' || section === 'scraping' || section === 'manettes',
+    activeGuard: () => section === 'configuration' || section === 'scrapers' || section === 'scraping' || section === 'themes' || section === 'manettes',
   });
 
   useEffect(() => {
     if (section === 'menu') {
       const first = document.querySelector<HTMLElement>('#settings-menu .menu-item');
       first?.focus();
-    } else if (section === 'configuration' || section === 'scrapers' || section === 'scraping' || section === 'manettes') {
+    } else if (section === 'configuration' || section === 'scrapers' || section === 'scraping' || section === 'themes' || section === 'manettes') {
       const firstField = document.querySelector<HTMLElement>('.settings-content input, .settings-content select, .settings-content button');
       firstField?.focus();
     }
@@ -136,6 +138,7 @@ export function SettingsModal({ cfg, onClose, onSave }:
       romsRoot: cfg?.romsRoot ?? '',
       emulatorsRoot: cfg?.emulatorsRoot ?? '',
       toolsRoot: cfg?.toolsRoot ?? '',
+      theme: cfg?.theme ?? 'retro',
       scrapers: {
         default: cfg?.scrapers?.default ?? 'igdb',
         screenscraper: {
@@ -169,6 +172,10 @@ export function SettingsModal({ cfg, onClose, onSave }:
           <button className="menu-item" tabIndex={0} onClick={() => setSection('scraping')}>
             <div className="menu-title">Scraping</div>
             <div className="menu-desc">Lancer le scraping global (manquants ou tout)</div>
+          </button>
+          <button className="menu-item" tabIndex={0} onClick={() => setSection('themes')}>
+            <div className="menu-title">Thèmes</div>
+            <div className="menu-desc">Choisir l'apparence de l'application</div>
           </button>
           <button className="menu-item" tabIndex={0} onClick={() => setSection('manettes')}>
             <div className="menu-title">Manettes</div>
@@ -439,6 +446,32 @@ export function SettingsModal({ cfg, onClose, onSave }:
               >
                 {confirmForce ? 'Confirmer: re-scraper TOUT' : 'Re-scraper toutes les ROMs (forcer)'}
               </button>
+            </div>
+          </>
+        )}
+
+        {section === 'themes' && (
+          <>
+            <h3>Thèmes</h3>
+            <p>Choisissez l'apparence visuelle de l'application.</p>
+            <div className="form-row">
+              <label htmlFor="theme-select">Thème actuel</label>
+              <select 
+                id="theme-select" 
+                value={local.theme || 'retro'} 
+                onChange={(e) => {
+                  const newTheme = e.target.value as "retro" | "abstract";
+                  setLocal({ ...local, theme: newTheme });
+                  // Appliquer immédiatement le thème pour prévisualisation
+                  document.body.setAttribute('data-theme', newTheme);
+                }}
+              >
+                <option value="retro">Retro - Arcade classique</option>
+                <option value="abstract">Abstract - Moderne et coloré</option>
+              </select>
+            </div>
+            <div style={{ fontSize: '0.6rem', opacity: 0.8, marginTop: '8px' }}>
+              Les changements de thème sont appliqués immédiatement. Enregistrez pour conserver vos préférences.
             </div>
           </>
         )}

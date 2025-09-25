@@ -7,13 +7,18 @@ body {
   margin: 0;
   padding: 0;
   max-width: 100%;
-  background: #1e1e1e url("./assets/background/retro-bg.jpg") center/cover fixed
-    no-repeat;
   position: relative;
   color: #eee;
 }
 
-body::before {
+/* Thème Retro (par défaut) */
+body[data-theme="retro"],
+body:not([data-theme]) {
+  background: #1e1e1e url("./assets/background/retro-bg.jpg") center/cover fixed no-repeat;
+}
+
+body[data-theme="retro"]::before,
+body:not([data-theme])::before {
   content: "";
   position: fixed;
   inset: 0;
@@ -25,6 +30,27 @@ body::before {
       rgba(0, 0, 0, 0.65) 100%
     ),
     linear-gradient(rgba(0, 0, 0, 0.18), rgba(0, 0, 0, 0.55));
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Thème Abstract */
+body[data-theme="abstract"] {
+  background: #0a0a0a url("./assets/background/abstract-bg.jpg") center/cover fixed no-repeat;
+}
+
+body[data-theme="abstract"]::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background:
+    radial-gradient(
+      circle at 30% 40%,
+      rgba(138, 43, 226, 0.1) 0%,
+      rgba(0, 0, 0, 0.6) 50%,
+      rgba(0, 0, 0, 0.8) 100%
+    ),
+    linear-gradient(135deg, rgba(75, 0, 130, 0.15), rgba(0, 0, 0, 0.7));
   pointer-events: none;
   z-index: 0;
 }
