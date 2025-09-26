@@ -107,6 +107,15 @@ declare global {
     image: {
       load(absPath: string): Promise<string | null>;
     };
+    favorites: {
+      list(): Promise<Array<{ systemId: string; fileName: string }>>;
+      is(systemId: string, fileName: string): Promise<boolean>;
+      toggle(
+        systemId: string,
+        fileName: string,
+      ): Promise<{ ok: true; favored: boolean }>;
+      onChanged(handler: () => void): () => void;
+    };
     app: {
       quit(): Promise<void>;
     };

@@ -11,6 +11,7 @@ export type InputNavOptions = {
   onBack?: () => void;
   onOpenSettings?: () => void;
   onQuit?: () => void;
+  onToggleFavorite?: () => void; // long-press Y
   activeGuard?: () => boolean; // return true to enable handling in current context
 };
 
@@ -21,6 +22,9 @@ export function useInputNavigation(opts: InputNavOptions) {
   const ignoreActivationsBeforeRef = useRef<number>(0);
   const ACTIVATION_COOLDOWN_MS = 220; // évite double validation lors de transitions d'écran
   const INITIAL_IGNORE_MS = 250; // ignore les activations tout de suite après montage (changement d'écran)
+  const Y_HOLD_MS = 1000; // ms to long-press Y to toggle favorite
+  const yHoldStartRef = useRef<number | null>(null);
+  const yFiredRef = useRef<boolean>(false);
 
   const getItems = (): HTMLElement[] => {
     const scope = opts.scopeSelector
@@ -259,7 +263,7 @@ export function useInputNavigation(opts: InputNavOptions) {
           gpWantRight ||
           Math.abs(axisX) > dead ||
           Math.abs(axisY) > dead;
-        const hasButtonInput = btn(0) || btn(1) || btn(8) || btn(9); // A, B, Select, Start
+        const hasButtonInput = btn(0) || btn(1) || btn(3) || btn(8) || btn(9); // A, B, Y, Select, Start
 
         if (hasDirectionalInput || hasButtonInput) {
           activeGamepad = gp;
@@ -271,6 +275,7 @@ export function useInputNavigation(opts: InputNavOptions) {
           // Store button states for this active gamepad
           btnStates[0] = btn(0); // A
           btnStates[1] = btn(1); // B
+          btnStates[3] = btn(3); // Y
           btnStates[8] = btn(8); // Select
           btnStates[9] = btn(9); // Start
           break; // Use the first gamepad with input
@@ -291,6 +296,11 @@ export function useInputNavigation(opts: InputNavOptions) {
       if (!relBtn(1)) heldRef.current["B"] = false;
       if (!relBtn(9)) heldRef.current["Start"] = false;
       if (!relBtn(8)) heldRef.current["Select"] = false;
+      // reset Y hold tracking when Y released on first pad
+      if (!relBtn(3)) {
+        yHoldStartRef.current = null;
+        yFiredRef.current = false;
+      }
 
       if (activeGamepad) {
         setInputMode("gamepad");
@@ -386,6 +396,20 @@ export function useInputNavigation(opts: InputNavOptions) {
           }
           heldRef.current["Select"] = true;
         } else heldRef.current["Select"] = false;
+
+        // Long-press Y to toggle favorite
+        if (btnStates[3]) {
+          if (yHoldStartRef.current == null) {
+            yHoldStartRef.current = now;
+            yFiredRef.current = false;
+          } else if (
+            !yFiredRef.current &&
+            now - yHoldStartRef.current >= Y_HOLD_MS
+          ) {
+            opts.onToggleFavorite?.();
+            yFiredRef.current = true;
+          }
+        }
       }
       raf = requestAnimationFrame(poll);
     };

@@ -528,6 +528,43 @@ app.whenReady().then(async () => {
     },
   );
 
+  // Favorites IPC handlers
+  ipcMain.handle("favorites:list", async () => {
+    return loadFavorites();
+  });
+  ipcMain.handle(
+    "favorites:is",
+    async (_evt: IPCEventLike, systemId: string, fileName: string) => {
+      const list = await loadFavorites();
+      return list.some(
+        (f) => f.systemId === systemId && f.fileName === fileName,
+      );
+    },
+  );
+  ipcMain.handle(
+    "favorites:toggle",
+    async (_evt: IPCEventLike, systemId: string, fileName: string) => {
+      const list = await loadFavorites();
+      const idx = list.findIndex(
+        (f) => f.systemId === systemId && f.fileName === fileName,
+      );
+      let favored: boolean;
+      if (idx >= 0) {
+        list.splice(idx, 1);
+        favored = false;
+      } else {
+        list.push({ systemId, fileName });
+        favored = true;
+      }
+      await saveFavorites(list);
+      // Broadcast change event
+      for (const win of BrowserWindow.getAllWindows()) {
+        win.webContents.send("favorites:changed");
+      }
+      return { ok: true, favored } as const;
+    },
+  );
+
   // Register a global shortcut to kill active emulator
   const registerShortcut = () => {
     const combo = "CommandOrControl+Shift+Q";
@@ -579,3 +616,31 @@ import {
   type UserConfig,
   getCatalog,
 } from "./config";
+
+// --- Favorites persistence ---
+type FavoriteEntry = { systemId: string; fileName: string };
+async function getFavoritesPath(): Promise<string> {
+  // Reuse Electron app.getPath("userData") but app is available above
+  const userData = app.getPath("userData");
+  return path.join(userData, "favorites.json");
+}
+async function loadFavorites(): Promise<FavoriteEntry[]> {
+  try {
+    const p = await getFavoritesPath();
+    const raw = await fs.readFile(p, "utf-8");
+    const arr = JSON.parse(raw);
+    if (Array.isArray(arr)) return arr as FavoriteEntry[];
+    return [];
+  } catch {
+    return [];
+  }
+}
+async function saveFavorites(list: FavoriteEntry[]): Promise<void> {
+  try {
+    const p = await getFavoritesPath();
+    await fs.mkdir(path.dirname(p), { recursive: true });
+    await fs.writeFile(p, JSON.stringify(list, null, 2), "utf-8");
+  } catch (e) {
+    console.warn("[favorites] save error", e);
+  }
+}

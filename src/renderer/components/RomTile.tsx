@@ -13,6 +13,7 @@ export function RomTile({ fileName, systemId }: RomTileProps) {
   const { show } = useToast();
   const [coverSrc, setCoverSrc] = useState<string | null>(null);
   const [fallbackIndex, setFallbackIndex] = useState(0);
+  const [favored, setFavored] = useState<boolean>(false);
   const fallbackExts = ['webp', 'png', 'jpg', 'svg'] as const;
 
   const toFileUrl = (absPath: string) => {
@@ -29,6 +30,13 @@ export function RomTile({ fileName, systemId }: RomTileProps) {
         setError(null);
         const meta = await window.metadata.get(fileName, systemId);
         setMetadata(meta);
+        // Load favorite state
+        try {
+          const isFav = await window.favorites.is(systemId, fileName);
+          setFavored(isFav);
+        } catch (e) {
+          // ignore favorite state load error (non-blocking)
+        }
       } catch (e) {
         console.error('Error checking metadata:', e);
         setError('Erreur lors de la vérification des métadonnées');
@@ -70,8 +78,28 @@ export function RomTile({ fileName, systemId }: RomTileProps) {
     }
   };
 
+  const toggleFavorite = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    try {
+      const res = await window.favorites.toggle(systemId, fileName);
+      if (res.ok) setFavored(res.favored);
+    } catch (err) {
+      console.error('Failed to toggle favorite', err);
+    }
+  };
+
   return (
-    <div className="rom-tile" onClick={launch} role="button" tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter') launch(); }}>
+    <div
+      className="rom-tile"
+      data-file={fileName}
+      data-system={systemId}
+      onClick={launch}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter') launch();
+      }}
+    >
       {coverSrc ? (
         <img
           src={coverSrc}
@@ -97,7 +125,19 @@ export function RomTile({ fileName, systemId }: RomTileProps) {
       )}
 
       <div className="rom-info">
-        <h3 className="rom-title">{metadata?.name || fileName}</h3>
+        <h3 className="rom-title" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
+          <span>{metadata?.name || fileName}</span>
+          <button
+            className="fav-btn"
+            aria-label={favored ? 'Retirer des favoris' : 'Ajouter aux favoris'}
+            title={favored ? 'Retirer des favoris' : 'Ajouter aux favoris'}
+            tabIndex={-1}
+            onMouseDown={(e) => e.preventDefault()}
+            onClick={toggleFavorite}
+          >
+            {favored ? '★' : '☆'}
+          </button>
+        </h3>
 
         {metadata?.description && (
           <p className="rom-description">

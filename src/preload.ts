@@ -151,5 +151,22 @@ contextBridge.exposeInMainWorld("image", {
     ipcRenderer.invoke("image:load", absPath),
 });
 
+contextBridge.exposeInMainWorld("favorites", {
+  list: async (): Promise<Array<{ systemId: string; fileName: string }>> =>
+    ipcRenderer.invoke("favorites:list"),
+  is: async (systemId: string, fileName: string): Promise<boolean> =>
+    ipcRenderer.invoke("favorites:is", systemId, fileName),
+  toggle: async (
+    systemId: string,
+    fileName: string,
+  ): Promise<{ ok: true; favored: boolean }> =>
+    ipcRenderer.invoke("favorites:toggle", systemId, fileName),
+  onChanged: (handler: () => void): (() => void) => {
+    const listener = () => handler();
+    ipcRenderer.on("favorites:changed", listener);
+    return () => ipcRenderer.removeListener("favorites:changed", listener);
+  },
+});
+
 // See the Electron documentation for details on how to use preload scripts:
 // https://www.electronjs.org/docs/latest/tutorial/process-model#preload-scripts
