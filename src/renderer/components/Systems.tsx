@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { findLogo } from '../logo-manifest';
 import { useInputNavigation } from '../hooks/useInputNavigation';
+import { getInputMode, setInputMode } from '../inputMode';
 
 export function Systems({ onOpen, initialIndex = 0 }: { onOpen: (system: string, index: number) => void; initialIndex?: number }) {
   const [systems, setSystems] = useState<string[]>([]);
@@ -167,6 +168,9 @@ export function Systems({ onOpen, initialIndex = 0 }: { onOpen: (system: string,
     const el = trackRef.current;
     if (!el) return;
     const handler = (e: WheelEvent) => {
+      // Treat as mouse interaction and only handle wheel in mouse mode
+      setInputMode('mouse');
+      if (getInputMode() !== 'mouse') return;
       if (Math.abs(e.deltaX) < Math.abs(e.deltaY)) {
         // treat vertical wheel as horizontal intent
       }

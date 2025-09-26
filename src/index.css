@@ -14,7 +14,8 @@ body {
 /* Thème Retro (par défaut) */
 body[data-theme="retro"],
 body:not([data-theme]) {
-  background: #1e1e1e url("./assets/background/retro-bg.jpg") center/cover fixed no-repeat;
+  background: #1e1e1e url("./assets/background/retro-bg.jpg") center/cover fixed
+    no-repeat;
 }
 
 body[data-theme="retro"]::before,
@@ -36,7 +37,8 @@ body:not([data-theme])::before {
 
 /* Thème Abstract */
 body[data-theme="abstract"] {
-  background: #0a0a0a url("./assets/background/abstract-bg.jpg") center/cover fixed no-repeat;
+  background: #0a0a0a url("./assets/background/abstract-bg.jpg") center/cover
+    fixed no-repeat;
 }
 
 body[data-theme="abstract"]::before {
@@ -75,7 +77,7 @@ textarea {
 /* -------- Systems Carousel -------- */
 #systems-screen {
   /* Center the whole systems selection vertically (below global header) */
-  min-height: calc(100vh - 70px); /* subtract approximate header space */
+  min-height: 100vh; /* subtract approximate header space */
   display: flex;
   flex-direction: column;
   justify-content: center;
@@ -249,7 +251,7 @@ textarea {
   position: fixed;
   top: 12px;
   right: 12px;
-  background: #2d2d2d;
+  background: transparent;
   color: #eee;
   border: 0;
   width: 40px;
@@ -258,10 +260,9 @@ textarea {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
 }
 .settings-btn:hover {
-  background: #3a3a3a;
+  outline: 2px solid #ff156d;
 }
 .settings-menu {
   display: flex;
@@ -382,6 +383,9 @@ textarea {
 }
 .settings-content {
   min-width: 0;
+}
+.settings-content h3 {
+  margin-top: 2em;
 }
 
 .form-row {
@@ -589,4 +593,19 @@ textarea {
 }
 .toast.error {
   border-color: #ff6b6b;
+}
+
+/* Input mode behavior: hide cursor and neutralize mouse hover when using keyboard/gamepad */
+body[data-input="gamepad"] {
+  cursor: none !important;
+}
+body[data-input="keyboard"] .system-tile:hover,
+body[data-input="gamepad"] .system-tile:hover {
+  transform: scale(0.72) translateY(0);
+  opacity: 0.12;
+}
+body[data-input="keyboard"] .rom-tile:hover,
+body[data-input="gamepad"] .rom-tile:hover {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 }

@@ -74,7 +74,9 @@ export function SettingsModal({ cfg, onClose, onSave }:
     itemSelector: section === 'menu' ? '#settings-menu .menu-item' : '#__none__',
     scopeSelector: '.modal-content',
     mode: 'grid',
+    // When on the menu screen: B closes the modal, Start closes the modal
     onBack: () => onClose(),
+    onOpenSettings: () => onClose(),
     activeGuard: () => {
       // Active only when menu is visible
       const menu = document.getElementById('settings-menu');
@@ -456,9 +458,9 @@ export function SettingsModal({ cfg, onClose, onSave }:
             <p>Choisissez l'apparence visuelle de l'application.</p>
             <div className="form-row">
               <label htmlFor="theme-select">Thème actuel</label>
-              <select 
-                id="theme-select" 
-                value={local.theme || 'retro'} 
+              <select
+                id="theme-select"
+                value={local.theme || 'retro'}
                 onChange={(e) => {
                   const newTheme = e.target.value as "retro" | "abstract";
                   setLocal({ ...local, theme: newTheme });

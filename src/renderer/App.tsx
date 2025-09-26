@@ -6,6 +6,7 @@ import { Roms } from './components/Roms';
 import { SettingsButton } from './components/SettingsButton';
 import { SettingsModal } from './components/SettingsModal';
 import { useToast } from './components/Toast';
+import { setInputMode } from './inputMode';
 
 export default function App() {
   const { cfg, save, refresh } = useUserConfig();
@@ -22,7 +23,40 @@ export default function App() {
   const [globalWatcher, setGlobalWatcher] = useState<boolean | null>(null);
   const [lastSystemIndex, setLastSystemIndex] = useState<number>(0);
 
+  // Helper: restore focus to current view's selected/default item
+  const refocusActiveView = () => {
+    try {
+      if (showSettings) return; // don't steal focus from modal
+      if (view.name === 'systems') {
+        const current = document.querySelector<HTMLElement>('#systems-screen .system-tile[aria-current="true"]')
+          || document.querySelector<HTMLElement>('#systems-screen .system-tile');
+        current?.focus();
+      } else if (view.name === 'roms') {
+        const current = document.querySelector<HTMLElement>('#roms .rom-tile[aria-current="true"]')
+          || document.querySelector<HTMLElement>('#roms .rom-tile');
+        current?.focus();
+      }
+    } catch {
+      /* ignore */
+    }
+  };
+
   // Detect Start+Select (typical buttons 9 + 8, with alternative indices) + optional debug overlay
+  useEffect(() => {
+    // Detect mouse activity to re-enable cursor/mouse interactions
+    const onMouseMove = () => setInputMode('mouse');
+    const onMouseDown = () => setInputMode('mouse');
+    const onWheel = () => setInputMode('mouse');
+    window.addEventListener('mousemove', onMouseMove, { passive: true });
+    window.addEventListener('mousedown', onMouseDown, { passive: true });
+    window.addEventListener('wheel', onWheel, { passive: true });
+    return () => {
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mousedown', onMouseDown);
+      window.removeEventListener('wheel', onWheel);
+    };
+  }, []);
+
   useEffect(() => {
     let active = true;
     const SELECT_CANDIDATES = [8, 6]; // 8 standard, 6 some alt mappings
@@ -92,6 +126,28 @@ export default function App() {
     return () => off();
   }, []);
 
+  // When emulator terminates (via IPC event), restore focus so selection visuals return
+  useEffect(() => {
+    if (!window.roms?.onEmulatorTerminated) return;
+    const off = window.roms.onEmulatorTerminated(() => {
+      // give the window a moment to regain OS focus, then refocus UI
+      setTimeout(refocusActiveView, 50);
+    });
+    return () => off();
+  }, [view, showSettings]);
+
+  // Also handle app/window refocus (e.g., emulator closed manually)
+  useEffect(() => {
+    const onWinFocus = () => setTimeout(refocusActiveView, 20);
+    window.addEventListener('focus', onWinFocus);
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') setTimeout(refocusActiveView, 20);
+    });
+    return () => {
+      window.removeEventListener('focus', onWinFocus);
+    };
+  }, [view, showSettings]);
+
   // Query global watcher status once and then every 5s while overlay visible
   useEffect(() => {
   let t: number | undefined;
@@ -132,7 +188,6 @@ export default function App() {
 
   return (
     <main>
-      <h1>Pixel</h1>
       {debugPad && (
         <div style={{ position: 'fixed', bottom: 8, left: 8, background: 'rgba(0,0,0,0.75)', padding: '8px 10px', fontSize: '10px', zIndex: 3000, maxWidth: 480, lineHeight: 1.3 }}>
           <div style={{ fontWeight: 600, marginBottom: 4 }}>Gamepad Debug (Ctrl+Alt+G)</div>

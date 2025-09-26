@@ -23,6 +23,7 @@ export function Roms({ system, onBack }: { system: string; onBack: () => void })
     itemSelector: '#roms .rom-tile',
     scopeSelector: '#roms-screen',
     mode: 'grid',
+    // B should always bring back to the main Systems menu
     onBack,
     onOpenSettings: () => document.getElementById('settings-btn')?.click(),
     activeGuard: () => !document.getElementById('settings-modal'),

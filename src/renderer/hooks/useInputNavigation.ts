@@ -1,4 +1,5 @@
 import { useEffect, useRef } from "react";
+import { setInputMode } from "../inputMode";
 
 type Direction = "left" | "right" | "up" | "down";
 
@@ -130,6 +131,7 @@ export function useInputNavigation(opts: InputNavOptions) {
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
+      setInputMode("keyboard");
       // Determine if this handler should be active
       let active = true;
       if (opts.activeGuard) active = !!opts.activeGuard();
@@ -188,7 +190,9 @@ export function useInputNavigation(opts: InputNavOptions) {
 
   useEffect(() => {
     let raf = 0;
-    const repeatDelay = 150; // ms between repeat moves
+    const repeatDelay = 150; // ms between repeat moves (for d-pad)
+    const AXIS_LOW = 0.35; // hysteresis low threshold (raise to ensure reliable release)
+    const AXIS_HIGH = 0.6; // activation high threshold
     // Début période d'ignorance des activations (A/Enter) pour absorber un appui maintenu
     ignoreActivationsBeforeRef.current = performance.now() + INITIAL_IGNORE_MS;
 
@@ -207,43 +211,63 @@ export function useInputNavigation(opts: InputNavOptions) {
         return;
       }
       const gps = navigator.getGamepads?.() || [];
-      const connectedGamepads = gps.filter((g) => g && g.connected && g.mapping === "standard");
+      const connectedGamepads = gps.filter(
+        (g) => g && g.connected && g.mapping === "standard",
+      );
       const now = performance.now();
-      
+
       // Check all connected gamepads for input, use the first one with active input
       let activeGamepad: Gamepad | null = null;
-      let wantUp = false, wantDown = false, wantLeft = false, wantRight = false;
+      let wantUp = false,
+        wantDown = false,
+        wantLeft = false,
+        wantRight = false;
+      let axisX = 0,
+        axisY = 0;
       const btnStates: { [key: number]: boolean } = {};
-      
+
+      // Read the first connected gamepad axes to allow releasing held axis flags
+      // even when there's not enough input to mark a pad as "active" this frame.
+      const firstGp = connectedGamepads[0] || null;
+      const relX = firstGp ? firstGp.axes[0] || 0 : 0;
+      const relY = firstGp ? firstGp.axes[1] || 0 : 0;
+      const relBtn = (i: number) => !!firstGp?.buttons?.[i]?.pressed;
+
       for (const gp of connectedGamepads) {
         if (!gp) continue;
-        
+
         const btn = (i: number) => gp.buttons[i]?.pressed || false;
-        const axisX = gp.axes[0] || 0;
-        const axisY = gp.axes[1] || 0;
+        axisX = gp.axes[0] || 0;
+        axisY = gp.axes[1] || 0;
         const dead = 0.4;
 
         const dpadUp = btn(12);
         const dpadDown = btn(13);
         const dpadLeft = btn(14);
         const dpadRight = btn(15);
+        // D-Pad intent ONLY (do not mix with axis). Axis is handled separately with hysteresis below.
+        const gpWantUp = dpadUp;
+        const gpWantDown = dpadDown;
+        const gpWantLeft = dpadLeft;
+        const gpWantRight = dpadRight;
 
-        const gpWantUp = dpadUp || axisY < -dead;
-        const gpWantDown = dpadDown || axisY > dead;
-        const gpWantLeft = dpadLeft || axisX < -dead;
-        const gpWantRight = dpadRight || axisX > dead;
-        
         // Check if this gamepad has any input
-        const hasDirectionalInput = gpWantUp || gpWantDown || gpWantLeft || gpWantRight;
+        const hasDirectionalInput =
+          gpWantUp ||
+          gpWantDown ||
+          gpWantLeft ||
+          gpWantRight ||
+          Math.abs(axisX) > dead ||
+          Math.abs(axisY) > dead;
         const hasButtonInput = btn(0) || btn(1) || btn(8) || btn(9); // A, B, Select, Start
-        
+
         if (hasDirectionalInput || hasButtonInput) {
           activeGamepad = gp;
           wantUp = gpWantUp;
           wantDown = gpWantDown;
           wantLeft = gpWantLeft;
           wantRight = gpWantRight;
-          
+
           // Store button states for this active gamepad
           btnStates[0] = btn(0); // A
           btnStates[1] = btn(1); // B
@@ -253,10 +277,54 @@ export function useInputNavigation(opts: InputNavOptions) {
         }
       }
 
+      // Always process axis release based on first connected pad to avoid lock-ups
+      if (Math.abs(relX) < AXIS_LOW) {
+        heldRef.current["AXIS_LEFT"] = false;
+        heldRef.current["AXIS_RIGHT"] = false;
+      }
+      if (Math.abs(relY) < AXIS_LOW) {
+        heldRef.current["AXIS_UP"] = false;
+        heldRef.current["AXIS_DOWN"] = false;
+      }
+      // Also release button holds (A/B/Start/Select) when not pressed anymore
+      if (!relBtn(0)) heldRef.current["A"] = false;
+      if (!relBtn(1)) heldRef.current["B"] = false;
+      if (!relBtn(9)) heldRef.current["Start"] = false;
+      if (!relBtn(8)) heldRef.current["Select"] = false;
+
       if (activeGamepad) {
+        setInputMode("gamepad");
         const movedRecently = now - lastMoveAtRef.current < repeatDelay;
 
-        if (!movedRecently) {
+        let axisTriggered = false;
+        if (axisY < -AXIS_HIGH && !heldRef.current["AXIS_UP"]) {
+          handleMove("up");
+          heldRef.current["AXIS_UP"] = true;
+          heldRef.current["AXIS_DOWN"] = false;
+          lastMoveAtRef.current = now;
+          axisTriggered = true;
+        } else if (axisY > AXIS_HIGH && !heldRef.current["AXIS_DOWN"]) {
+          handleMove("down");
+          heldRef.current["AXIS_DOWN"] = true;
+          heldRef.current["AXIS_UP"] = false;
+          lastMoveAtRef.current = now;
+          axisTriggered = true;
+        } else if (axisX < -AXIS_HIGH && !heldRef.current["AXIS_LEFT"]) {
+          handleMove("left");
+          heldRef.current["AXIS_LEFT"] = true;
+          heldRef.current["AXIS_RIGHT"] = false;
+          lastMoveAtRef.current = now;
+          axisTriggered = true;
+        } else if (axisX > AXIS_HIGH && !heldRef.current["AXIS_RIGHT"]) {
+          handleMove("right");
+          heldRef.current["AXIS_RIGHT"] = true;
+          heldRef.current["AXIS_LEFT"] = false;
+          lastMoveAtRef.current = now;
+          axisTriggered = true;
+        }
+
+        // If no axis-triggered move, allow D-Pad with repeat gating
+        if (!axisTriggered && !movedRecently) {
           if (wantLeft) {
             handleMove("left");
             lastMoveAtRef.current = now;
@@ -293,19 +361,29 @@ export function useInputNavigation(opts: InputNavOptions) {
 
         if (btnStates[1]) {
           // B
-          if (!heldRef.current["B"]) opts.onBack?.();
+          const canActivateTime = now > ignoreActivationsBeforeRef.current;
+          if (!heldRef.current["B"]) {
+            if (canActivateTime) opts.onBack?.();
+            // Mark as held regardless to avoid repeated triggers
+          }
           heldRef.current["B"] = true;
         } else heldRef.current["B"] = false;
 
         if (btnStates[9]) {
           // Start
-          if (!heldRef.current["Start"]) opts.onOpenSettings?.();
+          const canActivateTime = now > ignoreActivationsBeforeRef.current;
+          if (!heldRef.current["Start"]) {
+            if (canActivateTime) opts.onOpenSettings?.();
+          }
           heldRef.current["Start"] = true;
         } else heldRef.current["Start"] = false;
 
         if (btnStates[8]) {
           // Select/Back
-          if (!heldRef.current["Select"]) opts.onQuit?.();
+          const canActivateTime = now > ignoreActivationsBeforeRef.current;
+          if (!heldRef.current["Select"]) {
+            if (canActivateTime) opts.onQuit?.();
+          }
           heldRef.current["Select"] = true;
         } else heldRef.current["Select"] = false;
       }
