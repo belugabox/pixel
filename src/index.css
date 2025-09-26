@@ -537,6 +537,7 @@ textarea {
     transform 0.2s ease,
     box-shadow 0.2s ease;
   width: 300px; /* fixed width to form a visual grid with flex-wrap */
+  height: 160px; /* fixed height so all cards have the same size */
 }
 
 .rom-tile:hover {
@@ -549,8 +550,8 @@ textarea {
 }
 
 .rom-cover {
-  width: 80px;
-  height: 120px;
+  height: 100%; /* cover spans the full card height */
+  aspect-ratio: 2 / 3; /* enforce 2:3 ratio (w:h) */
   object-fit: cover;
   flex-shrink: 0;
   background: #222;
@@ -562,6 +563,9 @@ textarea {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  min-width: 0; /* allow text to shrink and ellipsize */
+  height: 100%;
+  overflow: hidden;
 }
 
 .rom-title {
@@ -569,6 +573,12 @@ textarea {
   margin: 0;
   line-height: 1.2;
   color: #fff;
+  display: -webkit-box;
+  line-clamp: 2;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
 }
 
 .fav-btn {
@@ -587,7 +597,12 @@ textarea {
   line-height: 1.4;
   color: #ccc;
   margin: 0;
-  flex: 1;
+  flex: 1; /* take remaining space between title and details */
+  display: -webkit-box;
+  line-clamp: 3;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .rom-details {
