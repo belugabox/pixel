@@ -3,6 +3,7 @@ export type UserConfig = {
   emulatorsRoot: string;
   toolsRoot?: string;
   theme?: "retro" | "abstract";
+  updatesBeta?: boolean;
   scrapers?: {
     default?: "igdb" | "screenscraper";
     screenscraper?: {
@@ -118,10 +119,27 @@ declare global {
     };
     app: {
       quit(): Promise<void>;
+      version(): Promise<string>;
     };
     gamepad: {
       onGlobalCombo(handler: () => void): () => void;
       isGlobalActive(): Promise<boolean>;
+    };
+    updates: {
+      check(opts?: {
+        beta?: boolean;
+      }): Promise<
+        | { ok: true; update: null }
+        | { ok: true; update: { version: string; notes: string; url: string } }
+        | { ok: false; error: string }
+      >;
+      download(): Promise<{ ok: boolean; error?: string }>;
+      install(): Promise<{ ok: boolean; error?: string }>;
+      onAvailable(handler: (info: unknown) => void): () => void;
+      onNotAvailable(handler: (info: unknown) => void): () => void;
+      onProgress(handler: (p: unknown) => void): () => void;
+      onDownloaded(handler: (info: unknown) => void): () => void;
+      onError(handler: (msg: string) => void): () => void;
     };
   }
 }

@@ -4,6 +4,7 @@ type UserConfig = {
   romsRoot: string;
   emulatorsRoot: string;
   toolsRoot?: string;
+  updatesBeta?: boolean;
   scrapers?: {
     screenscraper?: {
       ssid?: string;
@@ -105,6 +106,53 @@ contextBridge.exposeInMainWorld("dialog", {
 
 contextBridge.exposeInMainWorld("app", {
   quit: async (): Promise<void> => ipcRenderer.invoke("app:quit"),
+  version: async (): Promise<string> => ipcRenderer.invoke("app:version"),
+});
+
+contextBridge.exposeInMainWorld("updates", {
+  check: async (opts?: { beta?: boolean }) =>
+    ipcRenderer.invoke("updates:check", opts) as Promise<
+      | { ok: true; update: null }
+      | { ok: true; update: { version: string; notes: string; url: string } }
+      | { ok: false; error: string }
+    >,
+  download: async () =>
+    ipcRenderer.invoke("updates:download") as Promise<{
+      ok: boolean;
+      error?: string;
+    }>,
+  install: async () =>
+    ipcRenderer.invoke("updates:install") as Promise<{
+      ok: boolean;
+      error?: string;
+    }>,
+  onAvailable: (handler: (info: unknown) => void) => {
+    const listener = (_: unknown, info: unknown) => handler(info);
+    ipcRenderer.on("updates:auto:available", listener);
+    return () => ipcRenderer.removeListener("updates:auto:available", listener);
+  },
+  onNotAvailable: (handler: (info: unknown) => void) => {
+    const listener = (_: unknown, info: unknown) => handler(info);
+    ipcRenderer.on("updates:auto:not-available", listener);
+    return () =>
+      ipcRenderer.removeListener("updates:auto:not-available", listener);
+  },
+  onProgress: (handler: (p: unknown) => void) => {
+    const listener = (_: unknown, p: unknown) => handler(p);
+    ipcRenderer.on("updates:auto:progress", listener);
+    return () => ipcRenderer.removeListener("updates:auto:progress", listener);
+  },
+  onDownloaded: (handler: (info: unknown) => void) => {
+    const listener = (_: unknown, info: unknown) => handler(info);
+    ipcRenderer.on("updates:auto:downloaded", listener);
+    return () =>
+      ipcRenderer.removeListener("updates:auto:downloaded", listener);
+  },
+  onError: (handler: (msg: string) => void) => {
+    const listener = (_: unknown, msg: string) => handler(msg);
+    ipcRenderer.on("updates:auto:error", listener);
+    return () => ipcRenderer.removeListener("updates:auto:error", listener);
+  },
 });
 
 contextBridge.exposeInMainWorld("metadata", {

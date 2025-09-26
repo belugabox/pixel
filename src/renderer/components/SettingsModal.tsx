@@ -11,6 +11,7 @@ export function SettingsModal({ cfg, onClose, onSave }:
     emulatorsRoot: cfg?.emulatorsRoot ?? '',
     toolsRoot: cfg?.toolsRoot ?? '',
     theme: cfg?.theme ?? 'retro',
+    updatesBeta: cfg?.updatesBeta ?? false,
     scrapers: {
       default: cfg?.scrapers?.default ?? 'igdb',
       screenscraper: {
@@ -27,22 +28,66 @@ export function SettingsModal({ cfg, onClose, onSave }:
     }
   });
 
-  const [section, setSection] = useState<'menu' | 'configuration' | 'scrapers' | 'scraping' | 'themes' | 'manettes' | 'quitter'>('menu');
+  const [section, setSection] = useState<'menu' | 'configuration' | 'scrapers' | 'scraping' | 'themes' | 'manettes' | 'updates' | 'quitter'>('menu');
   const [isScraping, setIsScraping] = useState(false);
   const [confirmForce, setConfirmForce] = useState(false);
   const { show } = useToast();
   const [progress, setProgress] = useState<{ systemId: string; current: number; total: number; fileName: string } | null>(null);
+  const [checkingUpdate, setCheckingUpdate] = useState(false);
+  const [updateInfo, setUpdateInfo] = useState<null | { version: string; notes: string; url: string }>(null);
+  const [downloading, setDownloading] = useState(false);
+  const [downloaded, setDownloaded] = useState(false);
+  const [downloadProgress, setDownloadProgress] = useState<number | null>(null);
+  const [currentVersion, setCurrentVersion] = useState<string>("");
 
   useEffect(() => {
     const off = window.metadata.onProgress((p) => setProgress(p));
     return () => off();
   }, []);
 
+  useEffect(() => {
+    (async () => {
+      try { setCurrentVersion(await window.app.version()); } catch { /* ignore */ }
+    })();
+  }, []);
+
+  // Wire updater events when updates screen is active
+  useEffect(() => {
+    if (section !== 'updates') return;
+    const offAvail = window.updates.onAvailable(() => {/* no-op, we show info after manual check */});
+    const offNotAvail = window.updates.onNotAvailable(() => {/* no-op */});
+    const offErr = window.updates.onError((msg) => {
+      setDownloading(false);
+      setDownloaded(false);
+      setDownloadProgress(null);
+      show(msg || 'Erreur de mise à jour', 'error');
+    });
+    const offProg = window.updates.onProgress((p: unknown) => {
+      // electron-updater provides {percent, transferred, total, bytesPerSecond}
+      const rec = (p && typeof p === 'object') ? (p as Record<string, unknown>) : null;
+      const pct = rec && typeof rec.percent === 'number' ? (rec.percent as number) : null;
+      setDownloadProgress(pct);
+    });
+    const offDl = window.updates.onDownloaded(() => {
+      setDownloading(false);
+      setDownloaded(true);
+      setDownloadProgress(100);
+    });
+    return () => {
+      offAvail();
+      offNotAvail();
+      offErr();
+      offProg();
+      offDl();
+    };
+  }, [section, show]);
+
   const normalize = (c: UserConfig | null) => ({
     romsRoot: c?.romsRoot ?? '',
     emulatorsRoot: c?.emulatorsRoot ?? '',
     toolsRoot: c?.toolsRoot ?? '',
     theme: c?.theme ?? 'retro',
+    updatesBeta: c?.updatesBeta ?? false,
     scrapers: {
       default: c?.scrapers?.default ?? 'igdb',
       igdb: {
@@ -99,7 +144,7 @@ export function SettingsModal({ cfg, onClose, onSave }:
     scopeSelector: '.modal-content',
     mode: 'list',
     onBack: () => setSection('menu'),
-    activeGuard: () => section === 'configuration' || section === 'scrapers' || section === 'scraping' || section === 'themes' || section === 'manettes',
+    activeGuard: () => section === 'configuration' || section === 'scrapers' || section === 'scraping' || section === 'themes' || section === 'manettes' || section === 'updates',
   });
 
   useEffect(() => {
@@ -141,6 +186,7 @@ export function SettingsModal({ cfg, onClose, onSave }:
       emulatorsRoot: cfg?.emulatorsRoot ?? '',
       toolsRoot: cfg?.toolsRoot ?? '',
       theme: cfg?.theme ?? 'retro',
+      updatesBeta: cfg?.updatesBeta ?? false,
       scrapers: {
         default: cfg?.scrapers?.default ?? 'igdb',
         screenscraper: {
@@ -182,6 +228,10 @@ export function SettingsModal({ cfg, onClose, onSave }:
           <button className="menu-item" tabIndex={0} onClick={() => setSection('manettes')}>
             <div className="menu-title">Manettes</div>
             <div className="menu-desc">Manettes connectées et statut XInput natif</div>
+          </button>
+          <button className="menu-item" tabIndex={0} onClick={() => setSection('updates')}>
+            <div className="menu-title">Mises à jour</div>
+            <div className="menu-desc">Vérifier les nouvelles versions et activer le canal bêta</div>
           </button>
           <button className="menu-item" tabIndex={0} onClick={() => window.app.quit()}>
             <div className="menu-title">Quitter</div>
@@ -480,6 +530,90 @@ export function SettingsModal({ cfg, onClose, onSave }:
 
         {section === 'manettes' && (
           <ManettesSection />
+        )}
+
+        {section === 'updates' && (
+          <>
+            <h3>Mises à jour</h3>
+            <div className="form-row" style={{ fontSize: '0.65rem' }}>
+              Version actuelle: {currentVersion || '…'}
+            </div>
+            <div className="form-row">
+              <label htmlFor="beta-toggle">Activer les versions bêta</label>
+              <select
+                id="beta-toggle"
+                value={String(!!local.updatesBeta)}
+                onChange={(e) => setLocal({ ...local, updatesBeta: e.target.value === 'true' })}
+              >
+                <option value="false">Non (stables uniquement)</option>
+                <option value="true">Oui (inclure les préversions)</option>
+              </select>
+            </div>
+            <div className="form-row" style={{ gap: 8 }}>
+              <button
+                type="button"
+                disabled={checkingUpdate}
+                onClick={async () => {
+                  try {
+                    setCheckingUpdate(true);
+                    setUpdateInfo(null);
+                    const res = await window.updates.check({ beta: !!local.updatesBeta });
+                    if (res.ok && res.update) {
+                      setUpdateInfo(res.update);
+                    } else if (res.ok && !res.update) {
+                      show('Aucune mise à jour disponible');
+                    } else {
+                      show('Échec de la vérification des mises à jour', 'error');
+                    }
+                  } catch (e) {
+                    show('Erreur lors de la vérification', 'error');
+                  } finally {
+                    setCheckingUpdate(false);
+                  }
+                }}
+              >
+                {checkingUpdate ? 'Vérification…' : 'Vérifier les mises à jour'}
+              </button>
+              {updateInfo && !downloaded && (
+                <button
+                  type="button"
+                  className="primary"
+                  disabled={downloading}
+                  onClick={async () => {
+                    setDownloading(true);
+                    setDownloaded(false);
+                    setDownloadProgress(null);
+                    const res = await window.updates.download();
+                    if (!res.ok) {
+                      setDownloading(false);
+                      show(res.error || 'Échec du téléchargement', 'error');
+                    }
+                  }}
+                >
+                  {downloading ? (downloadProgress != null ? `Téléchargement… ${Math.round(downloadProgress)}%` : 'Téléchargement…') : `Télécharger Pixel ${updateInfo.version}`}
+                </button>
+              )}
+              {updateInfo && downloaded && (
+                <button
+                  type="button"
+                  className="primary"
+                  onClick={async () => {
+                    const res = await window.updates.install();
+                    if (!res.ok) show(res.error || "Échec de l'installation", 'error');
+                  }}
+                >
+                  Installer et redémarrer
+                </button>
+              )}
+            </div>
+            {updateInfo && (
+              <div className="form-row" style={{ fontSize: '0.55rem', whiteSpace: 'pre-wrap' }}>
+                <div><strong>Version:</strong> {updateInfo.version}</div>
+                <div><strong>Notes:</strong></div>
+                <div>{updateInfo.notes}</div>
+              </div>
+            )}
+          </>
         )}
 
         {section === 'quitter' && (

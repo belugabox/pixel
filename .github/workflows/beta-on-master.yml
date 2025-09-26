@@ -1,0 +1,46 @@
+name: Beta on master
+
+on:
+  push:
+    branches:
+      - master
+
+permissions:
+  contents: write
+
+jobs:
+  bump-and-tag-beta:
+    if: github.actor != 'github-actions' && !contains(github.event.head_commit.message, 'chore(release):')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Configure git user
+        run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Bump beta prerelease version and tag
+        run: |
+          CURRENT=$(node -p "require('./package.json').version")
+          echo "Current version: $CURRENT"
+          npm version prerelease --preid=beta -m "chore(release): %s"
+          NEWV=$(node -p "require('./package.json').version")
+          echo "Bumped to $NEWV"
+
+      - name: Push commit and tags
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git push origin HEAD:master --follow-tags

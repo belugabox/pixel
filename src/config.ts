@@ -33,6 +33,7 @@ export interface UserConfig {
   emulatorsRoot: string;
   toolsRoot?: string;
   theme?: "retro" | "abstract";
+  updatesBeta?: boolean; // opt-in to beta (pre-release) updates
   scrapers?: {
     default?: "igdb" | "screenscraper";
     screenscraper?: {

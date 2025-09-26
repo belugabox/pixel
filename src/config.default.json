@@ -3,6 +3,7 @@
   "emulatorsRoot": "",
   "toolsRoot": "",
   "theme": "retro",
+  "updatesBeta": false,
   "scrapers": {
     "default": "igdb",
     "screenscraper": {

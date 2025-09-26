@@ -24,6 +24,9 @@ import {
 
 // Global emulator reference for XInput combo handling
 let currentEmulator: import("node:child_process").ChildProcess | null = null;
+// Auto-update (electron-updater)
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { autoUpdater } = require("electron-updater");
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (started) {
@@ -96,6 +99,30 @@ app.whenReady().then(async () => {
   const userData = app.getPath("userData");
   await ensureConfig(userData);
 
+  // Configure autoUpdater feed (GitHub provider is default for electron-updater)
+  try {
+    autoUpdater.autoDownload = false; // manual download when user confirms
+    autoUpdater.allowPrerelease = false; // will be set from config via IPC before checks
+    const win = BrowserWindow.getAllWindows()[0];
+    autoUpdater.on("update-available", (info: unknown) =>
+      win?.webContents.send("updates:auto:available", info),
+    );
+    autoUpdater.on("update-not-available", (info: unknown) =>
+      win?.webContents.send("updates:auto:not-available", info),
+    );
+    autoUpdater.on("error", (err: unknown) =>
+      win?.webContents.send("updates:auto:error", String(err)),
+    );
+    autoUpdater.on("download-progress", (p: unknown) =>
+      win?.webContents.send("updates:auto:progress", p),
+    );
+    autoUpdater.on("update-downloaded", (info: unknown) =>
+      win?.webContents.send("updates:auto:downloaded", info),
+    );
+  } catch (e) {
+    console.warn("autoUpdater init failed", e);
+  }
+
   ipcMain.handle("config:get", async () => {
     return ensureConfig(userData);
   });
@@ -111,6 +138,76 @@ app.whenReady().then(async () => {
 
   ipcMain.handle("app:quit", async () => {
     app.quit();
+  });
+
+  ipcMain.handle("app:version", async () => {
+    return app.getVersion();
+  });
+
+  // Auto-update via electron-updater
+  ipcMain.handle(
+    "updates:check",
+    async (_evt: IPCEventLike, opts?: { beta?: boolean }) => {
+      try {
+        autoUpdater.allowPrerelease = !!opts?.beta;
+        const result = await autoUpdater.checkForUpdates();
+        const info = result?.updateInfo as unknown;
+        const extract = (
+          i: unknown,
+        ): { version?: string; notes?: string; url?: string } => {
+          if (!i || typeof i !== "object") return {};
+          const rec = i as Record<string, unknown>;
+          const version =
+            typeof rec.version === "string"
+              ? rec.version
+              : String(rec.version ?? "");
+          let notes = "";
+          const rn = rec.releaseNotes;
+          if (typeof rn === "string") notes = rn;
+          else if (rn && typeof rn === "object") notes = JSON.stringify(rn);
+          let url = "";
+          const files = rec.files;
+          if (Array.isArray(files) && files.length > 0) {
+            const f = files[0] as Record<string, unknown>;
+            if (typeof f?.url === "string") url = f.url as string;
+          }
+          return { version, notes, url };
+        };
+        const infoLite = extract(info);
+        if (infoLite.version && infoLite.version !== app.getVersion()) {
+          return {
+            ok: true,
+            update: {
+              version: infoLite.version,
+              notes: infoLite.notes || "",
+              url: infoLite.url || "",
+            },
+          } as const;
+        }
+        return { ok: true, update: null } as const;
+      } catch (e) {
+        console.error("autoUpdater check failed", e);
+        return { ok: false, error: "Échec de la vérification" } as const;
+      }
+    },
+  );
+  ipcMain.handle("updates:download", async () => {
+    try {
+      await autoUpdater.downloadUpdate();
+      return { ok: true } as const;
+    } catch (e) {
+      console.error("autoUpdater download failed", e);
+      return { ok: false, error: "Échec du téléchargement" } as const;
+    }
+  });
+  ipcMain.handle("updates:install", async () => {
+    try {
+      autoUpdater.quitAndInstall();
+      return { ok: true } as const;
+    } catch (e) {
+      console.error("autoUpdater install failed", e);
+      return { ok: false, error: "Échec de l'installation" } as const;
+    }
   });
 
   ipcMain.handle("gamepad:isGlobalActive", async () => {

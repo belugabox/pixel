@@ -1,9 +1,9 @@
-name: Release
+name: Release Beta
 
 on:
   push:
     tags:
-      - "v*.*.*"
+      - "v*.*.*-beta.*"
 
 permissions:
   contents: write
@@ -24,9 +24,9 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Make and publish (stable)
+      - name: Make and publish (prerelease)
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           FORGE_PUBLISH_DRAFT: "false"
-          FORGE_PUBLISH_PRERELEASE: "false"
+          FORGE_PUBLISH_PRERELEASE: "true"
         run: npm run publish
