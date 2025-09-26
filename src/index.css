@@ -234,6 +234,11 @@ textarea {
   text-decoration: underline 2px solid #ff156d;
   text-underline-offset: 6px;
 }
+/* Also underline when focus is set programmatically */
+.system-tile:focus h3 {
+  text-decoration: underline 2px solid #ff156d;
+  text-underline-offset: 6px;
+}
 
 .system-tile h3 {
   margin: 0;
@@ -316,7 +321,8 @@ textarea {
   opacity: 0.8;
 }
 .settings-menu .menu-item:hover,
-.settings-menu .menu-item:focus-visible {
+.settings-menu .menu-item:focus-visible,
+.settings-menu .menu-item:focus {
   background: #3a3a3a;
   outline: 2px solid #ff156d;
 }
@@ -548,6 +554,10 @@ textarea {
 .rom-tile:focus-visible {
   outline: 2px solid #ff156d;
 }
+.rom-tile:focus {
+  /* programmatic focus after returning from emulator */
+  outline: 2px solid #ff156d;
+}
 
 .rom-cover {
   height: 100%; /* cover spans the full card height */
@@ -592,18 +602,7 @@ textarea {
   filter: brightness(1.1);
 }
 
-.rom-description {
-  font-size: 0.5rem;
-  line-height: 1.4;
-  color: #ccc;
-  margin: 0;
-  flex: 1; /* take remaining space between title and details */
-  display: -webkit-box;
-  line-clamp: 3;
-  -webkit-line-clamp: 3;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
+/* .rom-description removed (no longer rendered) */
 
 .rom-details {
   display: flex;

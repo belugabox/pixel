@@ -139,13 +139,7 @@ export function RomTile({ fileName, systemId }: RomTileProps) {
           </button>
         </h3>
 
-        {metadata?.description && (
-          <p className="rom-description">
-            {metadata.description.length > 150
-              ? metadata.description.substring(0, 150) + '...'
-              : metadata.description}
-          </p>
-        )}
+
 
         <div className="rom-details">
           {metadata?.developer && <span className="rom-developer">{metadata.developer}</span>}
