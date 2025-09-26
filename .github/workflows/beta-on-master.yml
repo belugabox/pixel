@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - master
+  workflow_dispatch:
 
 permissions:
   contents: write
@@ -12,6 +13,8 @@ jobs:
   bump-and-tag-beta:
     if: github.actor != 'github-actions' && !contains(github.event.head_commit.message, 'chore(release):')
     runs-on: ubuntu-latest
+    outputs:
+      new_version: ${{ steps.bump.outputs.new_version }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -32,15 +35,47 @@ jobs:
         run: npm install
 
       - name: Bump beta prerelease version and tag
+        id: bump
         run: |
           CURRENT=$(node -p "require('./package.json').version")
           echo "Current version: $CURRENT"
           npm version prerelease --preid=beta -m "chore(release): %s"
           NEWV=$(node -p "require('./package.json').version")
           echo "Bumped to $NEWV"
+          echo "new_version=$NEWV" >> $GITHUB_OUTPUT
 
       - name: Push commit and tags
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           git push origin HEAD:master --follow-tags
+
+  publish-beta:
+    needs: bump-and-tag-beta
+    runs-on: windows-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout created tag
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: v${{ needs.bump-and-tag-beta.outputs.new_version }}
+
+      - name: Use Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build native addon (xinput)
+        run: npm run build:native
+
+      - name: Make and publish (prerelease)
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          FORGE_PUBLISH_DRAFT: "false"
+          FORGE_PUBLISH_PRERELEASE: "true"
+        run: npm run publish
