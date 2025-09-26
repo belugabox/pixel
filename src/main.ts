@@ -7,10 +7,7 @@ const {
   dialog,
   globalShortcut,
 } = require("electron");
-// Minimal event type (opaque) for IPC invoke handlers
-interface IPCEventLike {
-  sender: { send: (channel: string, ...args: unknown[]) => void };
-}
+
 import { spawn } from "node:child_process";
 import { MetadataService } from "./services/metadata-service";
 import { promises as fs } from "node:fs";
@@ -21,12 +18,24 @@ import {
   onCombo as onXInputCombo,
   isGlobalWatcherActive,
 } from "./services/xinput-global";
+import {
+  ensureConfig,
+  saveConfig,
+  type UserConfig,
+  getCatalog,
+} from "./config";
+import type { AppUpdater } from "electron-updater";
+
+// Minimal event type (opaque) for IPC invoke handlers
+interface IPCEventLike {
+  sender: { send: (channel: string, ...args: unknown[]) => void };
+}
 
 // Global emulator reference for XInput combo handling
 let currentEmulator: import("node:child_process").ChildProcess | null = null;
-// Auto-update (electron-updater)
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const { autoUpdater } = require("electron-updater");
+
+// Auto-update (electron-updater): load lazily to avoid crashing if missing in packaged app
+let autoUpdater: AppUpdater | null = null;
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 if (started) {
@@ -34,7 +43,6 @@ if (started) {
 }
 
 const createWindow = () => {
-  // Create the browser window.
   const mainWindow = new BrowserWindow({
     width: 800,
     height: 600,
@@ -46,7 +54,6 @@ const createWindow = () => {
     },
   });
 
-  // and load the index.html of the app.
   if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
     mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
   } else {
@@ -54,24 +61,16 @@ const createWindow = () => {
       path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`),
     );
   }
-
-  // Open the DevTools.
-  //mainWindow.webContents.openDevTools();
 };
 
-// This method will be called when Electron has finished
-// initialization and is ready to create browser windows.
-// Some APIs can only be used after this event occurs.
 app.on("ready", () => {
   createWindow();
-  // Start XInput global watcher immediately when app is ready
   try {
     startGlobalComboWatcher();
   } catch (e) {
     console.warn("[xinput] Failed to initialize global combo watcher:", e);
   }
   onXInputCombo(() => {
-    // Mirror renderer combo behavior: kill active emulator
     try {
       if (currentEmulator && !currentEmulator.killed) {
         try {
@@ -94,33 +93,45 @@ app.on("ready", () => {
   });
 });
 
-// IPC config handlers
 app.whenReady().then(async () => {
   const userData = app.getPath("userData");
   await ensureConfig(userData);
 
   // Configure autoUpdater feed (GitHub provider is default for electron-updater)
   try {
-    autoUpdater.autoDownload = false; // manual download when user confirms
-    autoUpdater.allowPrerelease = false; // will be set from config via IPC before checks
-    const win = BrowserWindow.getAllWindows()[0];
-    autoUpdater.on("update-available", (info: unknown) =>
-      win?.webContents.send("updates:auto:available", info),
-    );
-    autoUpdater.on("update-not-available", (info: unknown) =>
-      win?.webContents.send("updates:auto:not-available", info),
-    );
-    autoUpdater.on("error", (err: unknown) =>
-      win?.webContents.send("updates:auto:error", String(err)),
-    );
-    autoUpdater.on("download-progress", (p: unknown) =>
-      win?.webContents.send("updates:auto:progress", p),
-    );
-    autoUpdater.on("update-downloaded", (info: unknown) =>
-      win?.webContents.send("updates:auto:downloaded", info),
-    );
+    // Lazy require to avoid crashing if module missing
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const upd = require("electron-updater");
+    autoUpdater = upd?.autoUpdater ?? null;
+    if (autoUpdater) {
+      autoUpdater.autoDownload = false; // manual download when user confirms
+      autoUpdater.allowPrerelease = false; // set from config via IPC before checks
+      const win = BrowserWindow.getAllWindows()[0];
+      autoUpdater.on("update-available", (info: unknown) =>
+        win?.webContents.send("updates:auto:available", info),
+      );
+      autoUpdater.on("update-not-available", (info: unknown) =>
+        win?.webContents.send("updates:auto:not-available", info),
+      );
+      autoUpdater.on("error", (err: unknown) =>
+        win?.webContents.send("updates:auto:error", String(err)),
+      );
+      autoUpdater.on("download-progress", (p: unknown) =>
+        win?.webContents.send("updates:auto:progress", p),
+      );
+      autoUpdater.on("update-downloaded", (info: unknown) =>
+        win?.webContents.send("updates:auto:downloaded", info),
+      );
+    } else {
+      console.warn(
+        "[updates] electron-updater non disponible (require a renvoyé null)",
+      );
+    }
   } catch (e) {
-    console.warn("autoUpdater init failed", e);
+    console.warn(
+      "[updates] electron-updater introuvable. Les mises à jour seront désactivées.",
+      e,
+    );
   }
 
   ipcMain.handle("config:get", async () => {
@@ -149,6 +160,8 @@ app.whenReady().then(async () => {
     "updates:check",
     async (_evt: IPCEventLike, opts?: { beta?: boolean }) => {
       try {
+        if (!autoUpdater)
+          return { ok: false, error: "Mises à jour non disponibles" } as const;
         autoUpdater.allowPrerelease = !!opts?.beta;
         const result = await autoUpdater.checkForUpdates();
         const info = result?.updateInfo as unknown;
@@ -162,11 +175,11 @@ app.whenReady().then(async () => {
               ? rec.version
               : String(rec.version ?? "");
           let notes = "";
-          const rn = rec.releaseNotes;
+          const rn = rec.releaseNotes as unknown;
           if (typeof rn === "string") notes = rn;
           else if (rn && typeof rn === "object") notes = JSON.stringify(rn);
           let url = "";
-          const files = rec.files;
+          const files = rec.files as unknown;
           if (Array.isArray(files) && files.length > 0) {
             const f = files[0] as Record<string, unknown>;
             if (typeof f?.url === "string") url = f.url as string;
@@ -191,8 +204,11 @@ app.whenReady().then(async () => {
       }
     },
   );
+
   ipcMain.handle("updates:download", async () => {
     try {
+      if (!autoUpdater)
+        return { ok: false, error: "Mises à jour non disponibles" } as const;
       await autoUpdater.downloadUpdate();
       return { ok: true } as const;
     } catch (e) {
@@ -200,8 +216,11 @@ app.whenReady().then(async () => {
       return { ok: false, error: "Échec du téléchargement" } as const;
     }
   });
+
   ipcMain.handle("updates:install", async () => {
     try {
+      if (!autoUpdater)
+        return { ok: false, error: "Mises à jour non disponibles" } as const;
       autoUpdater.quitAndInstall();
       return { ok: true } as const;
     } catch (e) {
@@ -314,7 +333,6 @@ app.whenReady().then(async () => {
                   }
                 }
               }
-              // Build tool args with token replacement
               const toolArgs = (tool.args || []).map((a) =>
                 a
                   .replace("{rom}", romPath)
@@ -347,7 +365,6 @@ app.whenReady().then(async () => {
                   toolExe,
                   e,
                 );
-                // Continuer malgré l'échec du tool
               }
             } else {
               console.warn("[tool] Tool introuvable dans le catalog:", toolId);
@@ -383,7 +400,6 @@ app.whenReady().then(async () => {
           }
         }
 
-        // Build args replacing tokens
         const builtArgs = (emu.args || []).map((a) =>
           a
             .replace("{rom}", romPath)
@@ -392,7 +408,6 @@ app.whenReady().then(async () => {
             .replace("{core}", corePath || coreName || ""),
         );
 
-        // Resolve executable with fallback
         let exePath = emu.path;
         if (!path.isAbsolute(exePath)) {
           const primaryExe = path.join(emuRoot, exePath);
@@ -405,13 +420,11 @@ app.whenReady().then(async () => {
               await fs.access(fallbackExe);
               exePath = fallbackExe;
             } catch {
-              // keep exePath as-is to report a helpful error below
               exePath = primaryExe;
             }
           }
         }
 
-        // Validate paths
         try {
           await fs.access(romPath);
         } catch {
@@ -423,12 +436,10 @@ app.whenReady().then(async () => {
           return { ok: false, error: `Exécutable introuvable: ${exePath}` };
         }
         if (emu.coresPath && coreName) {
-          if (!corePath) {
+          if (!corePath)
             return { ok: false, error: `Core introuvable: ${coreName}` };
-          }
         }
 
-        // Log the command being executed for visibility
         console.log(
           "[roms:launch]",
           exePath,
@@ -459,7 +470,6 @@ app.whenReady().then(async () => {
     try {
       if (currentEmulator && !currentEmulator.killed) {
         const pid = currentEmulator.pid;
-        // On Windows, use process.kill; detached child will receive signal
         try {
           currentEmulator.kill();
         } catch (e) {
@@ -477,14 +487,11 @@ app.whenReady().then(async () => {
   });
 
   ipcMain.handle("dialog:selectDirectory", async () => {
-    const res = await dialog.showOpenDialog({
-      properties: ["openDirectory"],
-    });
+    const res = await dialog.showOpenDialog({ properties: ["openDirectory"] });
     if (res.canceled || res.filePaths.length === 0) return null;
     return res.filePaths[0];
   });
 
-  // Metadata handlers
   ipcMain.handle(
     "metadata:get",
     async (_evt: IPCEventLike, romFileName: string, systemId: string) => {
@@ -495,7 +502,6 @@ app.whenReady().then(async () => {
           screenscraper: cfg.scrapers?.screenscraper,
           igdb: cfg.scrapers?.igdb,
         });
-
         return await service.getMetadata(romFileName, systemId, cfg.romsRoot);
       } catch {
         return null;
@@ -513,7 +519,6 @@ app.whenReady().then(async () => {
           screenscraper: cfg.scrapers?.screenscraper,
           igdb: cfg.scrapers?.igdb,
         });
-
         return await service.downloadMetadata(
           romFileName,
           systemId,
@@ -536,7 +541,6 @@ app.whenReady().then(async () => {
           screenscraper: cfg.scrapers?.screenscraper,
           igdb: cfg.scrapers?.igdb,
         });
-
         return await service.hasMetadata(romFileName, systemId, cfg.romsRoot);
       } catch {
         return false;
@@ -605,7 +609,6 @@ app.whenReady().then(async () => {
     },
   );
 
-  // Load a local image file (outside of served bundle) and return a data URI
   ipcMain.handle(
     "image:load",
     async (_evt: IPCEventLike, absPath: string): Promise<string | null> => {
@@ -625,7 +628,6 @@ app.whenReady().then(async () => {
     },
   );
 
-  // Favorites IPC handlers
   ipcMain.handle("favorites:list", async () => {
     return loadFavorites();
   });
@@ -654,7 +656,6 @@ app.whenReady().then(async () => {
         favored = true;
       }
       await saveFavorites(list);
-      // Broadcast change event
       for (const win of BrowserWindow.getAllWindows()) {
         win.webContents.send("favorites:changed");
       }
@@ -662,7 +663,6 @@ app.whenReady().then(async () => {
     },
   );
 
-  // Register a global shortcut to kill active emulator
   const registerShortcut = () => {
     const combo = "CommandOrControl+Shift+Q";
     if (globalShortcut.isRegistered(combo)) globalShortcut.unregister(combo);
@@ -688,9 +688,6 @@ app.whenReady().then(async () => {
   });
 });
 
-// Quit when all windows are closed, except on macOS. There, it's common
-// for applications and their menu bar to stay active until the user quits
-// explicitly with Cmd + Q.
 app.on("window-all-closed", () => {
   if (process.platform !== "darwin") {
     app.quit();
@@ -698,26 +695,14 @@ app.on("window-all-closed", () => {
 });
 
 app.on("activate", () => {
-  // On OS X it's common to re-create a window in the app when the
-  // dock icon is clicked and there are no other windows open.
   if (BrowserWindow.getAllWindows().length === 0) {
     createWindow();
   }
 });
 
-// In this file you can include the rest of your app's specific main process
-// code. You can also put them in separate files and import them here.
-import {
-  ensureConfig,
-  saveConfig,
-  type UserConfig,
-  getCatalog,
-} from "./config";
-
 // --- Favorites persistence ---
 type FavoriteEntry = { systemId: string; fileName: string };
 async function getFavoritesPath(): Promise<string> {
-  // Reuse Electron app.getPath("userData") but app is available above
   const userData = app.getPath("userData");
   return path.join(userData, "favorites.json");
 }
