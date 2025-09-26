@@ -20,6 +20,13 @@ type Emulator = {
   coresPath?: string;
 };
 
+type Tool = {
+  id: string;
+  name: string;
+  path: string;
+  args?: string[];
+};
+
 type System = {
   id: string;
   name: string;
@@ -27,10 +34,12 @@ type System = {
   emulator: string;
   core: string;
   exclude?: string[];
+  tool?: string;
 };
 
 type Catalog = {
   emulators: Emulator[];
+  tools?: Tool[];
   systems: System[];
 };
 
@@ -124,7 +133,7 @@ contextBridge.exposeInMainWorld("metadata", {
     }) => void,
   ): (() => void) => {
     const listener = (
-      _evt: Electron.IpcRendererEvent,
+      _evt: unknown,
       payload: {
         systemId: string;
         current: number;

@@ -188,8 +188,77 @@ app.whenReady().then(async () => {
 
         const romPath = path.join(cfg.romsRoot, systemId, romFileName);
         const romName = path.parse(romFileName).name;
+        const romNameLower = romName.toLowerCase();
         const coreName = sys.core;
         const emuRoot = path.join(cfg.emulatorsRoot || "", emu.id);
+
+        // Optionally start a pre-launch tool defined on the system
+        try {
+          const toolId: string | undefined = (sys as { tool?: string }).tool;
+          const catalogTools = catalog.tools || [];
+          if (toolId) {
+            const tool = catalogTools.find((t) => t.id === toolId);
+            if (tool && tool.path) {
+              let toolExe = tool.path;
+              const toolsRoot = cfg.toolsRoot || "";
+              const toolRoot = path.join(toolsRoot, tool.id);
+              if (!path.isAbsolute(toolExe)) {
+                const primaryTool = path.join(toolRoot, toolExe);
+                const fallbackTool = path.join(toolsRoot, toolExe);
+                try {
+                  await fs.access(primaryTool);
+                  toolExe = primaryTool;
+                } catch {
+                  try {
+                    await fs.access(fallbackTool);
+                    toolExe = fallbackTool;
+                  } catch {
+                    toolExe = primaryTool; // for error message/log
+                  }
+                }
+              }
+              // Build tool args with token replacement
+              const toolArgs = (tool.args || []).map((a) =>
+                a
+                  .replace("{rom}", romPath)
+                  .replace("{romName}", romName)
+                  .replace("{romNameLower}", romNameLower)
+                  .replace("{system}", systemId),
+              );
+              try {
+                await fs.access(toolExe);
+                console.log(
+                  "[tool:launch]",
+                  toolExe,
+                  toolArgs
+                    .map((a) => (a.includes(" ") ? `"${a}"` : a))
+                    .join(" "),
+                  "(cwd:",
+                  path.dirname(toolExe) + ")",
+                );
+                const toolProc = spawn(toolExe, toolArgs, {
+                  cwd: path.dirname(toolExe),
+                  detached: true,
+                  stdio: "ignore",
+                });
+                toolProc.unref();
+              } catch (e) {
+                console.warn(
+                  "[tool] Échec du lancement du tool",
+                  toolId,
+                  "->",
+                  toolExe,
+                  e,
+                );
+                // Continuer malgré l'échec du tool
+              }
+            } else {
+              console.warn("[tool] Tool introuvable dans le catalog:", toolId);
+            }
+          }
+        } catch (e) {
+          console.warn("[tool] Erreur de configuration tool:", e);
+        }
 
         // Resolve core path with fallback
         let corePath: string | undefined;
@@ -222,6 +291,7 @@ app.whenReady().then(async () => {
           a
             .replace("{rom}", romPath)
             .replace("{romName}", romName)
+            .replace("{romNameLower}", romNameLower)
             .replace("{core}", corePath || coreName || ""),
         );
 

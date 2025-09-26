@@ -11,6 +11,13 @@ export interface Emulator {
   coresPath?: string;
 }
 
+export interface Tool {
+  id: string;
+  name: string;
+  path: string;
+  args?: string[];
+}
+
 export interface System {
   id: string;
   name: string;
@@ -18,6 +25,7 @@ export interface System {
   emulator: string; // references Emulator.id
   core: string; // core identifier (ex: "fbneo_libretro")
   exclude?: string[]; // list of file names to ignore when scanning (case-insensitive)
+  tool?: string; // optional tool id to run before launching the ROM
 }
 
 export interface UserConfig {
@@ -42,6 +50,7 @@ export interface UserConfig {
 }
 export interface CatalogConfig {
   emulators: Emulator[];
+  tools?: Tool[];
   systems: System[];
 }
 

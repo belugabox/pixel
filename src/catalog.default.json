@@ -14,6 +14,14 @@
       "args": ["-fullscreen", "{romName}"]
     }
   ],
+  "tools": [
+    {
+      "id": "demulshooter",
+      "name": "DemulShooter",
+      "path": "DemulShooter.exe",
+      "args": ["-target={system}", "-rom={romNameLower}"]
+    }
+  ],
   "systems": [
     {
       "id": "neogeo",
@@ -34,7 +42,8 @@
       "id": "model2",
       "name": "Sega Model 2",
       "extensions": [".zip", ".rom", ".iso"],
-      "emulator": "m2emulator"
+      "emulator": "m2emulator",
+      "tool": "demulshooter"
     }
   ]
 }

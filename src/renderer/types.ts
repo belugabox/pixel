@@ -46,6 +46,12 @@ export type Catalog = {
     args?: string[];
     coresPath?: string;
   }>;
+  tools?: Array<{
+    id: string;
+    name: string;
+    path: string;
+    args?: string[];
+  }>;
   systems: Array<{
     id: string;
     name: string;
@@ -53,6 +59,7 @@ export type Catalog = {
     emulator: string;
     core: string;
     exclude?: string[];
+    tool?: string;
   }>;
 };
 
