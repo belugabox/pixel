@@ -250,9 +250,35 @@ export class ScreenScraperScraper extends BaseScraper {
     // Map ScreenScraper media types to our internal types
     const t = mediaType.toLowerCase();
     if (t === "box-2d" || t === "box-front") return "cover";
-    if (t === "sstitle" || t === "screenmarquee" || t === "screenmarqueesmall") return "title";
+    if (t === "sstitle" || t === "screenmarquee" || t === "screenmarqueesmall" || t === "marquee") return "title";
     if (t === "ss" || t === "screenshot") return "screenshot";
+    // Some systems expose multiple wheel variants – normalize them to 'wheel'
+    if (
+      t === "wheel" ||
+      t === "wheel-hd" || t === "wheelhd" ||
+      t === "wheel-carbon" || t === "wheel-steel"
+    ) return "wheel";
     return null;
+  }
+
+  // ScreenScraper: exposent des types vidéos comme 'video-normalized'
+  protected getVideoType(mediaType: string): 'normalized' | null {
+    const t = mediaType.toLowerCase();
+    if (t === 'video-normalized') return 'normalized';
+    return null;
+  }
+
+  // Prefer HD variants when available (e.g., 'wheel-hd' over 'wheel')
+  protected getImageQualityPriority(imageType: ImageType, mediaType: string, _format?: string): number {
+    const t = mediaType.toLowerCase();
+    if (imageType === 'wheel') {
+      if (t.includes('wheel-hd') || t.includes('wheelhd')) return 10;
+      if (t === 'wheel') return 7;
+      if (t === 'wheel-steel') return 5;
+      if (t === 'wheel-carbon') return 4;
+    }
+    // Generic preference: png/webp slightly preferred by default could be added later
+    return 0;
   }
 
   private mapToScrapedGame(jeu: Record<string, unknown>): ScrapedGame {

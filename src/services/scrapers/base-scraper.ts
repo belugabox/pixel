@@ -35,6 +35,23 @@ export abstract class BaseScraper {
   protected abstract getImageType(mediaType: string): ImageType | null;
 
   /**
+   * Map media type to a video subtype (e.g., 'normalized')
+   * Default: no video support; scrapers can override.
+   */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  protected getVideoType(mediaType: string): 'normalized' | null { return null; }
+
+  /**
+   * Optional quality priority for images of the same ImageType.
+   * Higher number wins. Default 0 (no preference).
+   * Scrapers can override to prefer HD variants (e.g., ScreenScraper 'wheel-hd').
+   */
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  protected getImageQualityPriority(imageType: ImageType, mediaType: string, format?: string): number {
+    void imageType; void mediaType; void format; return 0;
+  }
+
+  /**
    * Download and save game metadata including images
    */
   async downloadMetadata(
@@ -68,19 +85,45 @@ export abstract class BaseScraper {
       );
       await fs.mkdir(metadataDir, { recursive: true });
 
-      // Download images if available
+      // Download images/videos if available
       if (game.media && game.media.length > 0) {
+        // First pass: pick best image per type based on quality
+        const bestImages: Partial<Record<ImageType, { url: string; mediaType: string; score: number; format?: string }>> = {};
         for (const media of game.media) {
           const imageType = this.getImageType(media.type);
           if (imageType) {
-            const imagePath = await this.downloadImage(
+            const score = this.getImageQualityPriority(imageType, media.type, media.format);
+            const current = bestImages[imageType];
+            if (!current || score > current.score) {
+              bestImages[imageType] = { url: media.url, mediaType: media.type, score, format: media.format };
+            }
+            continue;
+          }
+        }
+        // Second pass: download selected images
+        for (const [imgType, selected] of Object.entries(bestImages) as Array<[ImageType, { url: string; mediaType: string; score: number; format?: string }]>) {
+          try {
+            const imagePath = await this.downloadImage(selected.url, metadataDir, romFileName, imgType);
+            if (imagePath) {
+              metadata.images[imgType] = imagePath;
+            }
+          } catch (e) {
+            console.warn(`Failed to download image type ${imgType}:`, e);
+          }
+        }
+        // Videos: handle individually (no selection logic yet)
+        for (const media of game.media) {
+          const videoType = this.getVideoType(media.type);
+          if (videoType) {
+            const videoPath = await this.downloadVideo(
               media.url,
               metadataDir,
               romFileName,
-              imageType,
+              videoType,
             );
-            if (imagePath) {
-              metadata.images[imageType] = imagePath;
+            if (videoPath) {
+              metadata.videos = metadata.videos || {};
+              if (videoType === 'normalized') metadata.videos.normalized = videoPath;
             }
           }
         }
@@ -315,6 +358,38 @@ export abstract class BaseScraper {
         return ".webp";
       default:
         return ".jpg";
+    }
+  }
+
+  /**
+   * Download a video (or generic binary) and save it locally
+   */
+  protected async downloadVideo(
+    url: string,
+    metadataDir: string,
+    romFileName: string,
+    subtype: 'normalized',
+  ): Promise<string | null> {
+    try {
+      const response = await fetch(url, {
+        headers: {
+          'User-Agent': this.userAgent,
+        },
+      });
+      if (!response.ok) return null;
+      const buffer = await response.arrayBuffer();
+      const ct = (response.headers.get('content-type') || '').toLowerCase();
+      let ext = '.mp4';
+      if (ct.includes('webm')) ext = '.webm';
+      else if (ct.includes('ogg')) ext = '.ogg';
+      else if (ct.includes('x-matroska') || ct.includes('matroska') || ct.includes('mkv')) ext = '.mkv';
+      const fileName = `${path.parse(romFileName).name}_video-${subtype}${ext}`;
+      const filePath = path.join(metadataDir, fileName);
+      await fs.writeFile(filePath, Buffer.from(buffer));
+      return filePath;
+    } catch (error) {
+      console.error(`Error downloading video with ${this.name}:`, error);
+      return null;
     }
   }
 }

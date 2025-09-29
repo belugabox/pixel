@@ -58,6 +58,10 @@ type GameMetadata = {
     cover?: string;
     screenshot?: string;
     title?: string;
+    wheel?: string;
+  };
+  videos?: {
+    normalized?: string;
   };
 };
 

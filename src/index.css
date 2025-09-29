@@ -533,9 +533,9 @@ textarea {
 }
 
 .rom-tile {
-  display: flex;
-  flex-direction: row;
-  background: #333;
+  position: relative;
+  display: block;
+  background: #222;
   border-radius: 8px;
   overflow: hidden;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
@@ -543,7 +543,8 @@ textarea {
     transform 0.2s ease,
     box-shadow 0.2s ease;
   width: 300px; /* fixed width to form a visual grid with flex-wrap */
-  height: 160px; /* fixed height so all cards have the same size */
+  /* 4:3 area + caption bar (~36px) */
+  height: calc(300px * 3 / 4 + 36px);
 }
 
 .rom-tile:hover {
@@ -559,36 +560,55 @@ textarea {
   outline: 2px solid #ff156d;
 }
 
-.rom-cover {
-  height: 100%; /* cover spans the full card height */
-  aspect-ratio: 2 / 3; /* enforce 2:3 ratio (w:h) */
-  object-fit: cover;
-  flex-shrink: 0;
-  background: #222;
+/* Background screenshot area (4:3) */
+.rom-bg {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: calc(100% - 36px); /* leave space for caption bar */
+  object-fit: cover; /* fill background */
+  background: #111;
 }
 
-.rom-info {
-  flex: 1;
-  padding: 12px;
+/* Centered wheel overlay */
+.rom-wheel {
+  position: absolute;
+  left: 50%;
+  top: calc((100% - 36px) / 2);
+  transform: translate(-50%, -50%);
+  max-width: 85%;
+  max-height: calc((100% - 36px) * 0.7);
+  object-fit: contain;
+  image-rendering: auto;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
+  pointer-events: none; /* allow click-through to tile */
+}
+
+/* Caption bar at bottom */
+.rom-caption {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 36px;
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0) 0%,
+    rgba(0, 0, 0, 0.35) 6%,
+    rgba(0, 0, 0, 0.6) 100%
+  );
   display: flex;
-  flex-direction: column;
-  gap: 8px;
-  min-width: 0; /* allow text to shrink and ellipsize */
-  height: 100%;
-  overflow: hidden;
+  align-items: center;
+  padding: 0 10px;
 }
-
-.rom-title {
+.rom-caption-text {
   font-size: 0.7rem;
-  margin: 0;
-  line-height: 1.2;
   color: #fff;
-  display: -webkit-box;
-  line-clamp: 2;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  white-space: nowrap;
   overflow: hidden;
-  word-break: break-word;
+  text-overflow: ellipsis;
+  width: 100%;
 }
 
 .fav-btn {
@@ -602,21 +622,17 @@ textarea {
   filter: brightness(1.1);
 }
 
+/* Favorite button overlay (top-right inside the image area) */
+.fav-btn.overlay {
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  z-index: 2;
+}
+
 /* .rom-description removed (no longer rendered) */
 
-.rom-details {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-  font-size: 0.45rem;
-  color: #aaa;
-}
-
-.rom-developer,
-.rom-date,
-.rom-genre {
-  display: block;
-}
+/* rom-details removed from tile (kept styles for potential reuse elsewhere) */
 
 /* Removed per-ROM metadata button styles */
 

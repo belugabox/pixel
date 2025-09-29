@@ -11,7 +11,8 @@ export function RomTile({ fileName, systemId }: RomTileProps) {
   const [metadata, setMetadata] = useState<GameMetadata | null>(null);
   const [error, setError] = useState<string | null>(null);
   const { show } = useToast();
-  const [coverSrc, setCoverSrc] = useState<string | null>(null);
+  const [screenshotSrc, setScreenshotSrc] = useState<string | null>(null);
+  const [wheelSrc, setWheelSrc] = useState<string | null>(null);
   const [favored, setFavored] = useState<boolean>(false);
 
   const toFileUrl = (absPath: string) => {
@@ -49,10 +50,17 @@ export function RomTile({ fileName, systemId }: RomTileProps) {
         const dataUri = await window.image.load(p);
         return dataUri || toFileUrl(p);
       };
-      if (imgs?.cover) {
-        setCoverSrc(isRemote(imgs.cover) ? imgs.cover : await pickLocal(imgs.cover));
+      // Background: screenshot
+      if (imgs?.screenshot) {
+        setScreenshotSrc(isRemote(imgs.screenshot) ? imgs.screenshot : await pickLocal(imgs.screenshot));
       } else {
-        setCoverSrc(null);
+        setScreenshotSrc(null);
+      }
+      // Overlay: wheel
+      if (imgs?.wheel) {
+        setWheelSrc(isRemote(imgs.wheel) ? imgs.wheel : await pickLocal(imgs.wheel));
+      } else {
+        setWheelSrc(null);
       }
     })();
   }, [metadata, systemId]);
@@ -91,45 +99,43 @@ export function RomTile({ fileName, systemId }: RomTileProps) {
         if (e.key === 'Enter') launch();
       }}
     >
-      {coverSrc ? (
+      {screenshotSrc ? (
         <img
-          src={coverSrc}
+          src={screenshotSrc}
           alt={metadata?.name || fileName}
-          className="rom-cover"
-          onError={() => {
-            // Strict: uniquement cover, pas de fallback
-            setCoverSrc(null);
-          }}
+          className="rom-bg"
+          onError={() => setScreenshotSrc(null)}
         />
       ) : (
-        <div className="rom-cover" aria-hidden="true" />
+        <div className="rom-bg" aria-hidden="true" />
       )}
 
-      <div className="rom-info">
-        <h3 className="rom-title" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
-          <span>{metadata?.name || fileName}</span>
-          <button
-            className="fav-btn"
-            aria-label={favored ? 'Retirer des favoris' : 'Ajouter aux favoris'}
-            title={favored ? 'Retirer des favoris' : 'Ajouter aux favoris'}
-            tabIndex={-1}
-            onMouseDown={(e) => e.preventDefault()}
-            onClick={toggleFavorite}
-          >
-            {favored ? '★' : '☆'}
-          </button>
-        </h3>
+      {wheelSrc && (
+        <img
+          src={wheelSrc}
+          alt="wheel"
+          className="rom-wheel"
+          onError={() => setWheelSrc(null)}
+          draggable={false}
+        />
+      )}
 
+      <button
+        className="fav-btn overlay"
+        aria-label={favored ? 'Retirer des favoris' : 'Ajouter aux favoris'}
+        title={favored ? 'Retirer des favoris' : 'Ajouter aux favoris'}
+        tabIndex={-1}
+        onMouseDown={(e) => e.preventDefault()}
+        onClick={toggleFavorite}
+      >
+        {favored ? '★' : '☆'}
+      </button>
 
-
-        <div className="rom-details">
-          {metadata?.developer && <span className="rom-developer">{metadata.developer}</span>}
-          {metadata?.releaseDate && <span className="rom-date">{metadata.releaseDate}</span>}
-          {metadata?.genre && <span className="rom-genre">{metadata.genre}</span>}
-        </div>
-
-        {error && <div className="error-message">{error}</div>}
+      <div className="rom-caption">
+        <span className="rom-caption-text">{metadata?.name || fileName}</span>
       </div>
+
+      {error && <div className="error-message" style={{ position: 'absolute', left: 8, top: 8 }}>{error}</div>}
     </div>
   );
 }

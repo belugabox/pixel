@@ -14,6 +14,10 @@ export interface GameMetadata {
     cover?: string;
     screenshot?: string;
     title?: string;
+    wheel?: string;
+  };
+  videos?: {
+    normalized?: string;
   };
 }
 
@@ -40,7 +44,7 @@ export interface ScraperConfig {
   [key: string]: string | number | boolean | undefined;
 }
 
-export type ImageType = 'cover' | 'screenshot' | 'title';
+export type ImageType = 'cover' | 'screenshot' | 'title' | 'wheel';
 
 export interface ScraperCredentials {
   [key: string]: string | undefined;
