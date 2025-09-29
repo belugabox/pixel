@@ -1,13 +1,20 @@
 import { promises as fs } from "node:fs";
 import path from "node:path";
-import { GameMetadata, ScrapedGame, ScraperConfig, ImageType } from "./types";
+import {
+  GameMetadata,
+  ScrapedGame,
+  ScraperConfig,
+  ImageType,
+  SystemDownloadResult,
+} from "./types";
 import { app } from "electron";
+import { shouldExclude } from "../../utils/exclude";
 
 export abstract class BaseScraper {
   protected abstract readonly name: string;
   protected abstract readonly userAgent: string;
 
-  constructor(protected config: ScraperConfig = {}) {}
+  constructor(protected config: ScraperConfig = {}) { }
 
   /**
    * Search for a game by ROM filename and system
@@ -158,8 +165,8 @@ export abstract class BaseScraper {
     systemId: string,
     romsRoot: string,
     onProgress?: (current: number, total: number, fileName: string) => void,
-    opts?: { force?: boolean },
-  ): Promise<void> {
+    opts?: { force?: boolean; exclude?: string[] },
+  ): Promise<SystemDownloadResult> {
     try {
       const { promises: fs } = await import("node:fs");
       const pathModule = await import("node:path");
@@ -167,9 +174,29 @@ export abstract class BaseScraper {
       // Get list of ROM files for this system
       const systemDir = pathModule.join(romsRoot, systemId);
       const entries = await fs.readdir(systemDir, { withFileTypes: true });
-      const romFiles = entries.filter((e) => e.isFile()).map((e) => e.name);
+      let romFiles = entries.filter((e) => e.isFile()).map((e) => e.name);
+      // Apply exclude filters from opts (case-insensitive, wildcards, basename)
+      const before = romFiles.slice();
+      if (opts?.exclude && opts.exclude.length > 0) {
+        romFiles = romFiles.filter((name) => !shouldExclude(name, opts.exclude));
+        const excluded = before.filter((n) => !romFiles.includes(n));
+        if (excluded.length > 0) {
+          console.log(
+            `[scraper] Exclude applied for system '${systemId}': ${excluded.length} file(s) ignored ->`,
+            excluded.slice(0, 10),
+          );
+        }
+      }
 
       let current = 0;
+      const result: SystemDownloadResult = {
+        systemId,
+        processed: romFiles.length,
+        created: 0,
+        skipped: 0,
+        failed: 0,
+        items: [],
+      };
       for (const romFile of romFiles) {
         current++;
         onProgress?.(current, romFiles.length, romFile);
@@ -182,19 +209,43 @@ export abstract class BaseScraper {
             romsRoot,
           );
           if (hasExisting) {
+            result.skipped++;
+            result.items.push({ fileName: romFile, status: "skipped" });
             continue;
           }
         }
 
         // Download metadata with a small delay to avoid rate limiting
-        await this.downloadMetadata(romFile, systemId, romsRoot);
+        try {
+          const md = await this.downloadMetadata(romFile, systemId, romsRoot);
+          if (md) {
+            result.created++;
+            result.items.push({ fileName: romFile, status: "created", metadata: md });
+          } else {
+            result.failed++;
+            result.items.push({ fileName: romFile, status: "failed" });
+          }
+        } catch (e) {
+          console.error("downloadMetadata error:", e);
+          result.failed++;
+          result.items.push({ fileName: romFile, status: "failed" });
+        }
         await new Promise((resolve) => setTimeout(resolve, 1000)); // 1 second delay
       }
+      return result;
     } catch (error) {
       console.error(
         `Error downloading system metadata with ${this.name}:`,
         error,
       );
+      return {
+        systemId,
+        processed: 0,
+        created: 0,
+        skipped: 0,
+        failed: 0,
+        items: [],
+      };
     }
   }
 

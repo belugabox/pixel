@@ -39,6 +39,26 @@ export type GameMetadata = {
   };
 };
 
+export type RomResultItem = {
+  fileName: string;
+  status: "created" | "skipped" | "failed";
+  metadata?: GameMetadata | null;
+};
+
+export type SystemDownloadResult = {
+  systemId: string;
+  processed: number;
+  created: number;
+  skipped: number;
+  failed: number;
+  items: RomResultItem[];
+};
+
+export type AllDownloadResult = {
+  totals: { processed: number; created: number; skipped: number; failed: number };
+  systems: SystemDownloadResult[];
+};
+
 export type Catalog = {
   emulators: Array<{
     id: string;
@@ -94,8 +114,8 @@ declare global {
         systemId: string,
       ): Promise<GameMetadata | null>;
       has(romFileName: string, systemId: string): Promise<boolean>;
-      downloadSystem(systemId: string): Promise<void>;
-      downloadAll(opts?: { force?: boolean }): Promise<void>;
+      downloadSystem(systemId: string): Promise<SystemDownloadResult | null>;
+      downloadAll(opts?: { force?: boolean }): Promise<AllDownloadResult>;
       onProgress(
         handler: (payload: {
           systemId: string;

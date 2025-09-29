@@ -61,6 +61,24 @@ type GameMetadata = {
   };
 };
 
+type RomResultItem = {
+  fileName: string;
+  status: "created" | "skipped" | "failed";
+  metadata?: GameMetadata | null;
+};
+type SystemDownloadResult = {
+  systemId: string;
+  processed: number;
+  created: number;
+  skipped: number;
+  failed: number;
+  items: RomResultItem[];
+};
+type AllDownloadResult = {
+  totals: { processed: number; created: number; skipped: number; failed: number };
+  systems: SystemDownloadResult[];
+};
+
 contextBridge.exposeInMainWorld("config", {
   get: async (): Promise<UserConfig> => ipcRenderer.invoke("config:get"),
   set: async (cfg: UserConfig): Promise<UserConfig> =>
@@ -168,10 +186,10 @@ contextBridge.exposeInMainWorld("metadata", {
     ipcRenderer.invoke("metadata:download", romFileName, systemId),
   has: async (romFileName: string, systemId: string): Promise<boolean> =>
     ipcRenderer.invoke("metadata:has", romFileName, systemId),
-  downloadSystem: async (systemId: string): Promise<void> =>
-    ipcRenderer.invoke("metadata:downloadSystem", systemId),
-  downloadAll: async (opts?: { force?: boolean }): Promise<void> =>
-    ipcRenderer.invoke("metadata:downloadAll", opts),
+  downloadSystem: async (systemId: string): Promise<SystemDownloadResult | null> =>
+    ipcRenderer.invoke("metadata:downloadSystem", systemId) as Promise<SystemDownloadResult | null>,
+  downloadAll: async (opts?: { force?: boolean }): Promise<AllDownloadResult> =>
+    ipcRenderer.invoke("metadata:downloadAll", opts) as Promise<AllDownloadResult>,
   onProgress: (
     handler: (payload: {
       systemId: string;

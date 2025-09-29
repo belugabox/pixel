@@ -68,7 +68,9 @@ export class IgdbScraper extends BaseScraper {
         "limit 1;",
       ].join(" ");
 
-      const resp = await fetch("https://api.igdb.com/v4/games", {
+      const igdbUrl = "https://api.igdb.com/v4/games";
+      console.log(`[IGDB] POST ${igdbUrl} Body:`, query.slice(0, 120).replace(/\s+/g, ' ') + (query.length > 120 ? '…' : ''));
+      const resp = await fetch(igdbUrl, {
         method: "POST",
         headers: {
           "Client-ID": this.creds.clientId,
@@ -155,6 +157,8 @@ export class IgdbScraper extends BaseScraper {
         url.searchParams.set("client_id", this.creds.clientId);
         url.searchParams.set("client_secret", this.creds.clientSecret);
         url.searchParams.set("grant_type", "client_credentials");
+
+        console.log(`[IGDB] POST ${url.origin}${url.pathname}?client_id=***&client_secret=***&grant_type=client_credentials`);
 
         const resp = await fetch(url.toString(), { method: "POST" });
         if (!resp.ok) {

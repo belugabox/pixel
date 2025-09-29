@@ -12,9 +12,7 @@ export function RomTile({ fileName, systemId }: RomTileProps) {
   const [error, setError] = useState<string | null>(null);
   const { show } = useToast();
   const [coverSrc, setCoverSrc] = useState<string | null>(null);
-  const [fallbackIndex, setFallbackIndex] = useState(0);
   const [favored, setFavored] = useState<boolean>(false);
-  const fallbackExts = ['webp', 'png', 'jpg', 'svg'] as const;
 
   const toFileUrl = (absPath: string) => {
     if (!absPath) return '';
@@ -46,22 +44,15 @@ export function RomTile({ fileName, systemId }: RomTileProps) {
 
   useEffect(() => {
     (async () => {
-      if (metadata?.images?.cover) {
-        if (isRemote(metadata.images.cover)) {
-          setCoverSrc(metadata.images.cover);
-        } else {
-          // Load via IPC as data URI
-            const dataUri = await window.image.load(metadata.images.cover);
-            if (dataUri) {
-              setCoverSrc(dataUri);
-            } else {
-              setCoverSrc(toFileUrl(metadata.images.cover));
-            }
-        }
-        setFallbackIndex(0);
+      const imgs = metadata?.images;
+      const pickLocal = async (p: string) => {
+        const dataUri = await window.image.load(p);
+        return dataUri || toFileUrl(p);
+      };
+      if (imgs?.cover) {
+        setCoverSrc(isRemote(imgs.cover) ? imgs.cover : await pickLocal(imgs.cover));
       } else {
-        setFallbackIndex(0);
-        setCoverSrc(`systems/${systemId}.${fallbackExts[0]}`);
+        setCoverSrc(null);
       }
     })();
   }, [metadata, systemId]);
@@ -106,18 +97,8 @@ export function RomTile({ fileName, systemId }: RomTileProps) {
           alt={metadata?.name || fileName}
           className="rom-cover"
           onError={() => {
-            // Try next fallback extension for system placeholder
-            if (!metadata?.images?.cover) {
-              const next = fallbackIndex + 1;
-              if (next < fallbackExts.length) {
-                setFallbackIndex(next);
-                setCoverSrc(`systems/${systemId}.${fallbackExts[next]}`);
-              } else {
-                setCoverSrc(null);
-              }
-            } else {
-              setCoverSrc(null);
-            }
+            // Strict: uniquement cover, pas de fallback
+            setCoverSrc(null);
           }}
         />
       ) : (

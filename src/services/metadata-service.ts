@@ -3,12 +3,12 @@ import {
   ScraperType,
   ScraperFactoryConfig,
 } from "./scrapers/scraper-factory";
-import { GameMetadata } from "./scrapers/types";
+import { GameMetadata, SystemDownloadResult } from "./scrapers/types";
 
 export class MetadataService {
   private defaultScraper: ScraperType = "igdb";
 
-  constructor(private config: ScraperFactoryConfig = {}) {}
+  constructor(private config: ScraperFactoryConfig = {}) { }
 
   /**
    * Get metadata for a ROM using the default scraper
@@ -53,8 +53,8 @@ export class MetadataService {
     systemId: string,
     romsRoot: string,
     onProgress?: (current: number, total: number, fileName: string) => void,
-    opts?: { force?: boolean },
-  ): Promise<void> {
+    opts?: { force?: boolean; exclude?: string[] },
+  ): Promise<SystemDownloadResult> {
     const scraper = ScraperFactory.getScraper(this.defaultScraper, this.config);
     return scraper.downloadSystemMetadata(systemId, romsRoot, onProgress, opts);
   }

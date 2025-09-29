@@ -25,6 +25,7 @@ import {
   getCatalog,
 } from "./config";
 import type { AppUpdater } from "electron-updater";
+import { filterRoms } from "./utils/exclude";
 
 // Minimal event type (opaque) for IPC invoke handlers
 interface IPCEventLike {
@@ -263,18 +264,20 @@ app.whenReady().then(async () => {
           (s) => s.id.toLowerCase() === String(systemFolder).toLowerCase(),
         );
         const allowed = sys?.extensions?.map((e) => e.toLowerCase()) ?? null;
-        const excluded = sys?.exclude?.map((e) => e.toLowerCase()) ?? [];
+        const exclude = sys?.exclude ?? [];
 
-        return entries
-          .filter((e) => e.isFile())
-          .map((e) => e.name)
-          .filter((name) => {
-            if (!allowed) return true;
-            const ext = path.extname(name).toLowerCase();
-            return allowed.includes(ext);
-          })
-          .filter((name) => !excluded.includes(name.toLowerCase()))
-          .sort();
+        const files = entries.filter((e) => e.isFile()).map((e) => e.name);
+        const { kept, excluded } = filterRoms(files, {
+          extensions: allowed,
+          exclude,
+        });
+        if (excluded.length > 0) {
+          console.log(
+            `[roms:listFiles] Exclude applied for system '${systemFolder}': ${excluded.length} file(s) hidden ->`,
+            excluded.slice(0, 10),
+          );
+        }
+        return kept.sort();
       } catch {
         return [];
       }
@@ -497,12 +500,16 @@ app.whenReady().then(async () => {
     async (_evt: IPCEventLike, romFileName: string, systemId: string) => {
       try {
         const cfg = await ensureConfig(userData);
-        if (!cfg.romsRoot) return null;
         const service = new MetadataService({
           screenscraper: cfg.scrapers?.screenscraper,
           igdb: cfg.scrapers?.igdb,
         });
-        return await service.getMetadata(romFileName, systemId, cfg.romsRoot);
+        const defScraper = (cfg.scrapers?.default ?? "igdb") as
+          | "igdb"
+          | "screenscraper";
+        service.setDefaultScraper(defScraper);
+        // Même si romsRoot n'est pas défini, on peut lire le cache userData
+        return await service.getMetadata(romFileName, systemId, cfg.romsRoot ?? "");
       } catch {
         return null;
       }
@@ -519,6 +526,10 @@ app.whenReady().then(async () => {
           screenscraper: cfg.scrapers?.screenscraper,
           igdb: cfg.scrapers?.igdb,
         });
+        const defScraper = (cfg.scrapers?.default ?? "igdb") as
+          | "igdb"
+          | "screenscraper";
+        service.setDefaultScraper(defScraper);
         return await service.downloadMetadata(
           romFileName,
           systemId,
@@ -541,6 +552,10 @@ app.whenReady().then(async () => {
           screenscraper: cfg.scrapers?.screenscraper,
           igdb: cfg.scrapers?.igdb,
         });
+        const defScraper = (cfg.scrapers?.default ?? "igdb") as
+          | "igdb"
+          | "screenscraper";
+        service.setDefaultScraper(defScraper);
         return await service.hasMetadata(romFileName, systemId, cfg.romsRoot);
       } catch {
         return false;
@@ -558,8 +573,16 @@ app.whenReady().then(async () => {
           screenscraper: cfg.scrapers?.screenscraper,
           igdb: cfg.scrapers?.igdb,
         });
+        const defScraper = (cfg.scrapers?.default ?? "igdb") as
+          | "igdb"
+          | "screenscraper";
+        service.setDefaultScraper(defScraper);
 
-        await service.downloadSystemMetadata(
+        // Récupérer exclude pour ce système
+        const catalog = getCatalog();
+        const sysCfg = catalog.systems.find((s) => s.id === systemId);
+        const exclude = sysCfg?.exclude ?? [];
+        return await service.downloadSystemMetadata(
           systemId,
           cfg.romsRoot,
           (current, total, fileName) => {
@@ -570,9 +593,11 @@ app.whenReady().then(async () => {
               fileName,
             });
           },
+          { exclude },
         );
       } catch (error) {
         console.error("Error downloading system metadata:", error);
+        return null;
       }
     },
   );
@@ -582,14 +607,23 @@ app.whenReady().then(async () => {
     async (evt: IPCEventLike, opts?: { force?: boolean }) => {
       try {
         const cfg = await ensureConfig(userData);
-        if (!cfg.romsRoot) return;
+        if (!cfg.romsRoot) return { totals: { processed: 0, created: 0, skipped: 0, failed: 0 }, systems: [] };
         const service = new MetadataService({
           screenscraper: cfg.scrapers?.screenscraper,
           igdb: cfg.scrapers?.igdb,
         });
+        const defScraper = (cfg.scrapers?.default ?? "igdb") as
+          | "igdb"
+          | "screenscraper";
+        service.setDefaultScraper(defScraper);
         const catalog = getCatalog();
+        const systems: Array<{ id: string }> = catalog.systems as any;
+        const all: { systems: any[]; totals: { processed: number; created: number; skipped: number; failed: number } } = {
+          systems: [],
+          totals: { processed: 0, created: 0, skipped: 0, failed: 0 },
+        };
         for (const sys of catalog.systems) {
-          await service.downloadSystemMetadata(
+          const res = await service.downloadSystemMetadata(
             sys.id,
             cfg.romsRoot,
             (current, total, fileName) => {
@@ -600,11 +634,20 @@ app.whenReady().then(async () => {
                 fileName,
               });
             },
-            opts,
+            { ...opts, exclude: sys.exclude ?? [] },
           );
+          if (res) {
+            all.systems.push(res);
+            all.totals.processed += res.processed;
+            all.totals.created += res.created;
+            all.totals.skipped += res.skipped;
+            all.totals.failed += res.failed;
+          }
         }
+        return all;
       } catch (error) {
         console.error("Error downloading all metadata:", error);
+        return { totals: { processed: 0, created: 0, skipped: 0, failed: 0 }, systems: [] };
       }
     },
   );

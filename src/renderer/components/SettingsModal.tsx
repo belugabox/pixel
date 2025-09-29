@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useInputNavigation } from '../hooks/useInputNavigation';
-import type { UserConfig } from '../types';
+import type { UserConfig, AllDownloadResult } from '../types';
 import { useToast } from './Toast';
 import { ManettesSection } from './ManettesSection';
 
@@ -33,6 +33,7 @@ export function SettingsModal({ cfg, onClose, onSave }:
   const [confirmForce, setConfirmForce] = useState(false);
   const { show } = useToast();
   const [progress, setProgress] = useState<{ systemId: string; current: number; total: number; fileName: string } | null>(null);
+  const [scrapeResult, setScrapeResult] = useState<AllDownloadResult | null>(null);
   const [checkingUpdate, setCheckingUpdate] = useState(false);
   const [updateInfo, setUpdateInfo] = useState<null | { version: string; notes: string; url: string }>(null);
   const [downloading, setDownloading] = useState(false);
@@ -54,8 +55,8 @@ export function SettingsModal({ cfg, onClose, onSave }:
   // Wire updater events when updates screen is active
   useEffect(() => {
     if (section !== 'updates') return;
-    const offAvail = window.updates.onAvailable(() => {/* no-op, we show info after manual check */});
-    const offNotAvail = window.updates.onNotAvailable(() => {/* no-op */});
+    const offAvail = window.updates.onAvailable(() => {/* no-op, we show info after manual check */ });
+    const offNotAvail = window.updates.onNotAvailable(() => {/* no-op */ });
     const offErr = window.updates.onError((msg) => {
       setDownloading(false);
       setDownloaded(false);
@@ -204,8 +205,16 @@ export function SettingsModal({ cfg, onClose, onSave }:
     });
   }, [cfg]);
 
+  // Credentials readiness (for visual badges)
+  const igdbReady = !!(local.scrapers?.igdb?.clientId && local.scrapers?.igdb?.clientSecret);
+  const ssUserReady = !!(local.scrapers?.screenscraper?.ssid && local.scrapers?.screenscraper?.sspassword);
+  const ssDevReady = !!(local.scrapers?.screenscraper?.devid && local.scrapers?.screenscraper?.devpassword);
+  const screenscraperReady = ssUserReady || ssDevReady;
+  const badgeOkStyle: React.CSSProperties = { background: '#1b5e20', color: '#fff', padding: '2px 6px', borderRadius: 6, fontSize: '0.65rem' };
+  const badgeMissingStyle: React.CSSProperties = { background: '#7f1d1d', color: '#fff', padding: '2px 6px', borderRadius: 6, fontSize: '0.65rem' };
+
   return (
-  <div className="modal-content" onKeyDown={handleModalKeyDown}>
+    <div className="modal-content" onKeyDown={handleModalKeyDown}>
       <h2 id="settings-title">Paramètres</h2>
       {section === 'menu' && (
         <div className="settings-menu" id="settings-menu">
@@ -245,396 +254,453 @@ export function SettingsModal({ cfg, onClose, onSave }:
           <button type="button" className="secondary" onClick={() => setSection('menu')}>
             ← Retour au menu
           </button>
-        {section === 'configuration' && (
-          <>
-            <h3>Général</h3>
-            <div className="form-row">
-              <label htmlFor="roms-root">Dossier ROMs (romsRoot)</label>
-              <div className="input-row">
-                <input id="roms-root" value={local.romsRoot} onChange={(e) => setLocal({ ...local, romsRoot: e.target.value })} />
-                <button type="button" className="secondary" onClick={async () => {
-                  const dir = await window.dialog.selectDirectory();
-                  if (dir) setLocal({ ...local, romsRoot: dir });
-                }}>…</button>
-              </div>
-            </div>
-            <div className="form-row">
-              <label htmlFor="emulators-root">Dossier émulateurs (emulatorsRoot)</label>
-              <div className="input-row">
-                <input id="emulators-root" value={local.emulatorsRoot} onChange={(e) => setLocal({ ...local, emulatorsRoot: e.target.value })} />
-                <button type="button" className="secondary" onClick={async () => {
-                  const dir = await window.dialog.selectDirectory();
-                  if (dir) setLocal({ ...local, emulatorsRoot: dir });
-                }}>…</button>
-              </div>
-            </div>
-            <div className="form-row">
-              <label htmlFor="tools-root">Dossier outils (toolsRoot)</label>
-              <div className="input-row">
-                <input id="tools-root" value={local.toolsRoot ?? ''} onChange={(e) => setLocal({ ...local, toolsRoot: e.target.value })} />
-                <button type="button" className="secondary" onClick={async () => {
-                  const dir = await window.dialog.selectDirectory();
-                  if (dir) setLocal({ ...local, toolsRoot: dir });
-                }}>…</button>
-              </div>
-            </div>
-
-            {/* Scraper par défaut déplacé dans Scrapers */}
-          </>
-        )}
-
-        {section === 'scrapers' && (
-          <>
-            <h3>Scraper par défaut</h3>
-            <div className="form-row">
-              <label htmlFor="scraper-default">Scraper par défaut</label>
-              <select
-                id="scraper-default"
-                value={local.scrapers?.default ?? 'igdb'}
-                onChange={(e) => setLocal({
-                  ...local,
-                  scrapers: {
-                    ...local.scrapers,
-                    default: (e.target.value as 'igdb' | 'screenscraper')
-                  }
-                })}
-              >
-                <option value="igdb">IGDB</option>
-                <option value="screenscraper">ScreenScraper</option>
-              </select>
-            </div>
-
-            <h3>Configuration IGDB</h3>
-            <div className="form-row">
-              <label htmlFor="igdb-client-id">Client ID (IGDB/Twitch)</label>
-              <input
-                id="igdb-client-id"
-                value={local.scrapers?.igdb?.clientId ?? ''}
-                onChange={(e) => setLocal({
-                  ...local,
-                  scrapers: {
-                    ...local.scrapers,
-                    igdb: {
-                      ...local.scrapers?.igdb,
-                      clientId: e.target.value
-                    }
-                  }
-                })}
-              />
-            </div>
-            <div className="form-row">
-              <label htmlFor="igdb-client-secret">Client Secret (IGDB/Twitch)</label>
-              <input
-                id="igdb-client-secret"
-                type="password"
-                value={local.scrapers?.igdb?.clientSecret ?? ''}
-                onChange={(e) => setLocal({
-                  ...local,
-                  scrapers: {
-                    ...local.scrapers,
-                    igdb: {
-                      ...local.scrapers?.igdb,
-                      clientSecret: e.target.value
-                    }
-                  }
-                })}
-              />
-            </div>
-
-            <h3>Configuration ScreenScraper</h3>
-            <div className="form-row">
-              <label htmlFor="ss-ssid">Nom d'utilisateur ScreenScraper</label>
-              <input
-                id="ss-ssid"
-                value={local.scrapers?.screenscraper?.ssid ?? ''}
-                onChange={(e) => setLocal({
-                  ...local,
-                  scrapers: {
-                    ...local.scrapers,
-                    screenscraper: {
-                      ...local.scrapers?.screenscraper,
-                      ssid: e.target.value
-                    }
-                  }
-                })}
-              />
-            </div>
-            <div className="form-row">
-              <label htmlFor="ss-sspassword">Mot de passe ScreenScraper</label>
-              <input
-                id="ss-sspassword"
-                type="password"
-                value={local.scrapers?.screenscraper?.sspassword ?? ''}
-                onChange={(e) => setLocal({
-                  ...local,
-                  scrapers: {
-                    ...local.scrapers,
-                    screenscraper: {
-                      ...local.scrapers?.screenscraper,
-                      sspassword: e.target.value
-                    }
-                  }
-                })}
-              />
-            </div>
-            <div className="form-row">
-              <label htmlFor="ss-devid">ID développeur ScreenScraper (optionnel)</label>
-              <input
-                id="ss-devid"
-                value={local.scrapers?.screenscraper?.devid ?? ''}
-                onChange={(e) => setLocal({
-                  ...local,
-                  scrapers: {
-                    ...local.scrapers,
-                    screenscraper: {
-                      ...local.scrapers?.screenscraper,
-                      devid: e.target.value
-                    }
-                  }
-                })}
-              />
-            </div>
-            <div className="form-row">
-              <label htmlFor="ss-devpassword">Mot de passe développeur ScreenScraper (optionnel)</label>
-              <input
-                id="ss-devpassword"
-                type="password"
-                value={local.scrapers?.screenscraper?.devpassword ?? ''}
-                onChange={(e) => setLocal({
-                  ...local,
-                  scrapers: {
-                    ...local.scrapers,
-                    screenscraper: {
-                      ...local.scrapers?.screenscraper,
-                      devpassword: e.target.value
-                    }
-                  }
-                })}
-              />
-            </div>
-            <div className="form-row">
-              <label htmlFor="ss-softname">Nom du logiciel (softname)</label>
-              <input
-                id="ss-softname"
-                value={local.scrapers?.screenscraper?.softname ?? 'pixel'}
-                onChange={(e) => setLocal({
-                  ...local,
-                  scrapers: {
-                    ...local.scrapers,
-                    screenscraper: {
-                      ...local.scrapers?.screenscraper,
-                      softname: e.target.value || 'pixel'
-                    }
-                  }
-                })}
-              />
-            </div>
-          </>
-        )}
-
-        {section === 'scraping' && (
-          <>
-            <h3>Scraping global</h3>
-            <p>Déclencher le scraping des métadonnées pour toute la bibliothèque.</p>
-            {progress && (
-              <div className="form-row" style={{ width: '100%' }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem' }}>
-                  <span>Système: {progress.systemId}</span>
-                  <span>{progress.current}/{progress.total}</span>
+          {section === 'configuration' && (
+            <>
+              <h3>Général</h3>
+              <div className="form-row">
+                <label htmlFor="roms-root">Dossier ROMs (romsRoot)</label>
+                <div className="input-row">
+                  <input id="roms-root" value={local.romsRoot} onChange={(e) => setLocal({ ...local, romsRoot: e.target.value })} />
+                  <button type="button" className="secondary" onClick={async () => {
+                    const dir = await window.dialog.selectDirectory();
+                    if (dir) setLocal({ ...local, romsRoot: dir });
+                  }}>…</button>
                 </div>
-                <div style={{ background: '#2b2b2b', height: 8, borderRadius: 4, overflow: 'hidden' }}>
-                  <div style={{ width: `${Math.max(0, Math.min(100, progress.total ? (progress.current / progress.total) * 100 : 0))}%`, height: '100%', background: '#ff156d' }} />
-                </div>
-                <div style={{ fontSize: '0.6rem', opacity: 0.8, marginTop: 4, wordBreak: 'break-all' }}>ROM: {progress.fileName}</div>
               </div>
-            )}
-            <div className="form-row" style={{ gap: 8, alignItems: 'flex-start', flexDirection: 'column' }}>
-              <button
-                type="button"
-                disabled={isScraping}
-                onClick={async () => {
-                  try {
-                    setIsScraping(true);
-                    show('Scraping démarré: ROMs sans métadonnées');
-                    await window.metadata.downloadAll({ force: false });
-                    show('Scraping terminé (ROMs sans métadonnées)');
-                    setProgress(null);
-                  } catch (e) {
-                    console.error(e);
-                    show('Erreur lors du scraping (voir console).', 'error');
-                  } finally {
-                    setIsScraping(false);
-                  }
-                }}
-              >
-                Scraper uniquement les ROMs sans métadonnées
-              </button>
-              <button
-                type="button"
-                className="secondary"
-                disabled={isScraping}
-                onClick={async () => {
-                  if (!confirmForce) {
-                    setConfirmForce(true);
-                    show('Cliquez à nouveau pour confirmer le re-scraping total');
-                    // Reset confirmation after a short delay
-                    setTimeout(() => setConfirmForce(false), 4000);
-                    return;
-                  }
-                  try {
-                    setIsScraping(true);
-                    setConfirmForce(false);
-                    show('Re-scraping démarré: toutes les ROMs');
-                    await window.metadata.downloadAll({ force: true });
-                    show('Re-scraping terminé (toutes les ROMs)');
-                    setProgress(null);
-                  } catch (e) {
-                    console.error(e);
-                    show('Erreur lors du re-scraping (voir console).', 'error');
-                  } finally {
-                    setIsScraping(false);
-                  }
-                }}
-              >
-                {confirmForce ? 'Confirmer: re-scraper TOUT' : 'Re-scraper toutes les ROMs (forcer)'}
-              </button>
-            </div>
-          </>
-        )}
+              <div className="form-row">
+                <label htmlFor="emulators-root">Dossier émulateurs (emulatorsRoot)</label>
+                <div className="input-row">
+                  <input id="emulators-root" value={local.emulatorsRoot} onChange={(e) => setLocal({ ...local, emulatorsRoot: e.target.value })} />
+                  <button type="button" className="secondary" onClick={async () => {
+                    const dir = await window.dialog.selectDirectory();
+                    if (dir) setLocal({ ...local, emulatorsRoot: dir });
+                  }}>…</button>
+                </div>
+              </div>
+              <div className="form-row">
+                <label htmlFor="tools-root">Dossier outils (toolsRoot)</label>
+                <div className="input-row">
+                  <input id="tools-root" value={local.toolsRoot ?? ''} onChange={(e) => setLocal({ ...local, toolsRoot: e.target.value })} />
+                  <button type="button" className="secondary" onClick={async () => {
+                    const dir = await window.dialog.selectDirectory();
+                    if (dir) setLocal({ ...local, toolsRoot: dir });
+                  }}>…</button>
+                </div>
+              </div>
 
-        {section === 'themes' && (
-          <>
-            <h3>Thèmes</h3>
-            <p>Choisissez l'apparence visuelle de l'application.</p>
-            <div className="form-row">
-              <label htmlFor="theme-select">Thème actuel</label>
-              <select
-                id="theme-select"
-                value={local.theme || 'retro'}
-                onChange={(e) => {
-                  const newTheme = e.target.value as "retro" | "abstract";
-                  setLocal({ ...local, theme: newTheme });
-                  // Appliquer immédiatement le thème pour prévisualisation
-                  document.body.setAttribute('data-theme', newTheme);
-                }}
-              >
-                <option value="retro">Retro - Arcade classique</option>
-                <option value="abstract">Abstract - Moderne et coloré</option>
-              </select>
-            </div>
-            <div className="theme-help-text">
-              Les changements de thème sont appliqués immédiatement. Enregistrez pour conserver vos préférences.
-            </div>
-          </>
-        )}
+              {/* Scraper par défaut déplacé dans Scrapers */}
+            </>
+          )}
 
-        {section === 'manettes' && (
-          <ManettesSection />
-        )}
-
-        {section === 'updates' && (
-          <>
-            <h3>Mises à jour</h3>
-            <div className="form-row" style={{ fontSize: '0.65rem' }}>
-              Version actuelle: {currentVersion || '…'}
-            </div>
-            <div className="form-row">
-              <label htmlFor="beta-toggle">Activer les versions bêta</label>
-              <select
-                id="beta-toggle"
-                value={String(!!local.updatesBeta)}
-                onChange={(e) => setLocal({ ...local, updatesBeta: e.target.value === 'true' })}
-              >
-                <option value="false">Non (stables uniquement)</option>
-                <option value="true">Oui (inclure les préversions)</option>
-              </select>
-            </div>
-            <div className="form-row" style={{ gap: 8 }}>
-              <button
-                type="button"
-                disabled={checkingUpdate}
-                onClick={async () => {
-                  try {
-                    setCheckingUpdate(true);
-                    setUpdateInfo(null);
-                    const res = await window.updates.check({ beta: !!local.updatesBeta });
-                    if (res.ok && res.update) {
-                      setUpdateInfo(res.update);
-                    } else if (res.ok && !res.update) {
-                      show('Aucune mise à jour disponible');
-                    } else {
-                      show('Échec de la vérification des mises à jour', 'error');
+          {section === 'scrapers' && (
+            <>
+              <h3>Scraper par défaut</h3>
+              <div className="form-row">
+                <label htmlFor="scraper-default">Scraper par défaut</label>
+                <select
+                  id="scraper-default"
+                  value={local.scrapers?.default ?? 'igdb'}
+                  onChange={(e) => setLocal({
+                    ...local,
+                    scrapers: {
+                      ...local.scrapers,
+                      default: (e.target.value as 'igdb' | 'screenscraper')
                     }
-                  } catch (e) {
-                    show('Erreur lors de la vérification', 'error');
-                  } finally {
-                    setCheckingUpdate(false);
-                  }
-                }}
-              >
-                {checkingUpdate ? 'Vérification…' : 'Vérifier les mises à jour'}
-              </button>
-              {updateInfo && !downloaded && (
+                  })}
+                >
+                  <option value="igdb">IGDB</option>
+                  <option value="screenscraper">ScreenScraper</option>
+                </select>
+              </div>
+              <div className="form-row" style={{ gap: 8, alignItems: 'center', flexDirection: 'row', flexWrap: 'wrap' }}>
+                <div style={{ fontSize: '0.8rem', opacity: 0.9 }}>État des identifiants:</div>
+                <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap' }}>
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                    <span style={{ opacity: 0.8 }}>IGDB</span>
+                    <span style={igdbReady ? badgeOkStyle : badgeMissingStyle}>{igdbReady ? 'OK' : 'Manquant'}</span>
+                  </div>
+                  <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+                    <span style={{ opacity: 0.8 }}>ScreenScraper</span>
+                    <span style={screenscraperReady ? badgeOkStyle : badgeMissingStyle}>{screenscraperReady ? 'OK' : 'Manquant'}</span>
+                  </div>
+                </div>
+              </div>
+
+              <h3>Configuration IGDB</h3>
+              <div className="form-row">
+                <label htmlFor="igdb-client-id">Client ID (IGDB/Twitch)</label>
+                <input
+                  id="igdb-client-id"
+                  value={local.scrapers?.igdb?.clientId ?? ''}
+                  onChange={(e) => setLocal({
+                    ...local,
+                    scrapers: {
+                      ...local.scrapers,
+                      igdb: {
+                        ...local.scrapers?.igdb,
+                        clientId: e.target.value
+                      }
+                    }
+                  })}
+                />
+                {(!local.scrapers?.igdb?.clientId || !local.scrapers?.igdb?.clientSecret) && (
+                  <small style={{ color: '#ffa500' }}>
+                    Astuce: Renseignez Client ID et Client Secret pour activer IGDB. Sinon, choisissez ScreenScraper en scraper par défaut.
+                  </small>
+                )}
+              </div>
+              <div className="form-row">
+                <label htmlFor="igdb-client-secret">Client Secret (IGDB/Twitch)</label>
+                <input
+                  id="igdb-client-secret"
+                  type="password"
+                  value={local.scrapers?.igdb?.clientSecret ?? ''}
+                  onChange={(e) => setLocal({
+                    ...local,
+                    scrapers: {
+                      ...local.scrapers,
+                      igdb: {
+                        ...local.scrapers?.igdb,
+                        clientSecret: e.target.value
+                      }
+                    }
+                  })}
+                />
+              </div>
+
+              <h3>Configuration ScreenScraper</h3>
+              <div className="form-row">
+                <label htmlFor="ss-ssid">Nom d'utilisateur ScreenScraper</label>
+                <input
+                  id="ss-ssid"
+                  value={local.scrapers?.screenscraper?.ssid ?? ''}
+                  onChange={(e) => setLocal({
+                    ...local,
+                    scrapers: {
+                      ...local.scrapers,
+                      screenscraper: {
+                        ...local.scrapers?.screenscraper,
+                        ssid: e.target.value
+                      }
+                    }
+                  })}
+                />
+              </div>
+              <div className="form-row">
+                <label htmlFor="ss-sspassword">Mot de passe ScreenScraper</label>
+                <input
+                  id="ss-sspassword"
+                  type="password"
+                  value={local.scrapers?.screenscraper?.sspassword ?? ''}
+                  onChange={(e) => setLocal({
+                    ...local,
+                    scrapers: {
+                      ...local.scrapers,
+                      screenscraper: {
+                        ...local.scrapers?.screenscraper,
+                        sspassword: e.target.value
+                      }
+                    }
+                  })}
+                />
+                {!(local.scrapers?.screenscraper?.ssid && local.scrapers?.screenscraper?.sspassword) &&
+                  !(local.scrapers?.screenscraper?.devid && local.scrapers?.screenscraper?.devpassword) && (
+                    <small style={{ color: '#ffa500' }}>
+                      Astuce: Fournissez soit un compte utilisateur (ssid + mot de passe) soit des identifiants développeur (devid + devpassword) pour améliorer la fiabilité de ScreenScraper. Facultatif mais recommandé.
+                    </small>
+                  )}
+              </div>
+              <div className="form-row">
+                <label htmlFor="ss-devid">ID développeur ScreenScraper (optionnel)</label>
+                <input
+                  id="ss-devid"
+                  value={local.scrapers?.screenscraper?.devid ?? ''}
+                  onChange={(e) => setLocal({
+                    ...local,
+                    scrapers: {
+                      ...local.scrapers,
+                      screenscraper: {
+                        ...local.scrapers?.screenscraper,
+                        devid: e.target.value
+                      }
+                    }
+                  })}
+                />
+              </div>
+              <div className="form-row">
+                <label htmlFor="ss-devpassword">Mot de passe développeur ScreenScraper (optionnel)</label>
+                <input
+                  id="ss-devpassword"
+                  type="password"
+                  value={local.scrapers?.screenscraper?.devpassword ?? ''}
+                  onChange={(e) => setLocal({
+                    ...local,
+                    scrapers: {
+                      ...local.scrapers,
+                      screenscraper: {
+                        ...local.scrapers?.screenscraper,
+                        devpassword: e.target.value
+                      }
+                    }
+                  })}
+                />
+              </div>
+              <div className="form-row">
+                <label htmlFor="ss-softname">Nom du logiciel (softname)</label>
+                <input
+                  id="ss-softname"
+                  value={local.scrapers?.screenscraper?.softname ?? 'pixel'}
+                  onChange={(e) => setLocal({
+                    ...local,
+                    scrapers: {
+                      ...local.scrapers,
+                      screenscraper: {
+                        ...local.scrapers?.screenscraper,
+                        softname: e.target.value || 'pixel'
+                      }
+                    }
+                  })}
+                />
+              </div>
+            </>
+          )}
+
+          {section === 'scraping' && (
+            <>
+              <h3>Scraping global</h3>
+              <p>Déclencher le scraping des métadonnées pour toute la bibliothèque.</p>
+              {progress && (
+                <div className="form-row" style={{ width: '100%' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.65rem' }}>
+                    <span>Système: {progress.systemId}</span>
+                    <span>{progress.current}/{progress.total}</span>
+                  </div>
+                  <div style={{ background: '#2b2b2b', height: 8, borderRadius: 4, overflow: 'hidden' }}>
+                    <div style={{ width: `${Math.max(0, Math.min(100, progress.total ? (progress.current / progress.total) * 100 : 0))}%`, height: '100%', background: '#ff156d' }} />
+                  </div>
+                  <div style={{ fontSize: '0.6rem', opacity: 0.8, marginTop: 4, wordBreak: 'break-all' }}>ROM: {progress.fileName}</div>
+                </div>
+              )}
+              <div className="form-row" style={{ gap: 8, alignItems: 'flex-start', flexDirection: 'column' }}>
                 <button
                   type="button"
-                  className="primary"
-                  disabled={downloading}
+                  disabled={isScraping}
                   onClick={async () => {
-                    setDownloading(true);
-                    setDownloaded(false);
-                    setDownloadProgress(null);
-                    const res = await window.updates.download();
-                    if (!res.ok) {
-                      setDownloading(false);
-                      show(res.error || 'Échec du téléchargement', 'error');
+                    try {
+                      setIsScraping(true);
+                      setScrapeResult(null);
+                      show('Scraping démarré: ROMs sans métadonnées');
+                      const res = await window.metadata.downloadAll({ force: false });
+                      show('Scraping terminé (ROMs sans métadonnées)');
+                      setProgress(null);
+                      setScrapeResult(res);
+                      // Affiche l'écran de résultat
+                      setSection('scraping');
+                    } catch (e) {
+                      console.error(e);
+                      show('Erreur lors du scraping (voir console).', 'error');
+                    } finally {
+                      setIsScraping(false);
                     }
                   }}
                 >
-                  {downloading ? (downloadProgress != null ? `Téléchargement… ${Math.round(downloadProgress)}%` : 'Téléchargement…') : `Télécharger Pixel ${updateInfo.version}`}
+                  Scraper uniquement les ROMs sans métadonnées
                 </button>
-              )}
-              {updateInfo && downloaded && (
                 <button
                   type="button"
-                  className="primary"
+                  className="secondary"
+                  disabled={isScraping}
                   onClick={async () => {
-                    const res = await window.updates.install();
-                    if (!res.ok) show(res.error || "Échec de l'installation", 'error');
+                    if (!confirmForce) {
+                      setConfirmForce(true);
+                      show('Cliquez à nouveau pour confirmer le re-scraping total');
+                      // Reset confirmation after a short delay
+                      setTimeout(() => setConfirmForce(false), 4000);
+                      return;
+                    }
+                    try {
+                      setIsScraping(true);
+                      setConfirmForce(false);
+                      setScrapeResult(null);
+                      show('Re-scraping démarré: toutes les ROMs');
+                      const res = await window.metadata.downloadAll({ force: true });
+                      show('Re-scraping terminé (toutes les ROMs)');
+                      setProgress(null);
+                      setScrapeResult(res);
+                      setSection('scraping');
+                    } catch (e) {
+                      console.error(e);
+                      show('Erreur lors du re-scraping (voir console).', 'error');
+                    } finally {
+                      setIsScraping(false);
+                    }
                   }}
                 >
-                  Installer et redémarrer
+                  {confirmForce ? 'Confirmer: re-scraper TOUT' : 'Re-scraper toutes les ROMs (forcer)'}
                 </button>
-              )}
-            </div>
-            {updateInfo && (
-              <div className="form-row" style={{ fontSize: '0.55rem', whiteSpace: 'pre-wrap' }}>
-                <div><strong>Version:</strong> {updateInfo.version}</div>
-                <div><strong>Notes:</strong></div>
-                <div>{updateInfo.notes}</div>
               </div>
-            )}
-          </>
-        )}
 
-        {section === 'quitter' && (
-          <>
-            <h3>Quitter l'application</h3>
-            <p>Fermer Pixel et revenir au système.</p>
-            <div className="form-actions" style={{ justifyContent: 'flex-start' }}>
-              <button type="button" className="primary" onClick={() => window.app.quit()}>Quitter Pixel</button>
-            </div>
-          </>
-        )}
+              {scrapeResult && (
+                <div className="form-row" style={{ width: '100%', marginTop: 12 }}>
+                  <h4>Résultat</h4>
+                  <div style={{ fontSize: '0.7rem' }}>
+                    Total: {scrapeResult.totals.processed} • Créés: {scrapeResult.totals.created} • Sautés: {scrapeResult.totals.skipped} • Échecs: {scrapeResult.totals.failed}
+                  </div>
+                  <div style={{ maxHeight: 220, overflow: 'auto', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 6, padding: 8, marginTop: 6 }}>
+                    {scrapeResult.systems.map((sys) => (
+                      <div key={sys.systemId} style={{ marginBottom: 10 }}>
+                        <div style={{ fontWeight: 600 }}>{sys.systemId} — {sys.created} créés, {sys.skipped} sautés, {sys.failed} échecs</div>
+                        <ul style={{ listStyle: 'none', padding: 0, margin: '6px 0 0 0' }}>
+                          {sys.items.slice(0, 10).map((it, idx) => (
+                            <li key={idx} style={{ fontSize: '0.65rem', opacity: 0.9 }}>
+                              {it.status === 'created' ? '✅' : it.status === 'skipped' ? '⏭️' : '⚠️'} {it.fileName}
+                            </li>
+                          ))}
+                          {sys.items.length > 10 && (
+                            <li style={{ fontSize: '0.65rem', opacity: 0.7 }}>… {sys.items.length - 10} autres</li>
+                          )}
+                        </ul>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
+          )}
 
-        <div className="form-actions">
-          <button
-            type="button"
-            onClick={() => setSection('menu')}
-          >
-            Annuler (Esc)
-          </button>
-          <button type="submit" className="primary" disabled={!isDirty}>Enregistrer</button>
-        </div>
+          {section === 'themes' && (
+            <>
+              <h3>Thèmes</h3>
+              <p>Choisissez l'apparence visuelle de l'application.</p>
+              <div className="form-row">
+                <label htmlFor="theme-select">Thème actuel</label>
+                <select
+                  id="theme-select"
+                  value={local.theme || 'retro'}
+                  onChange={(e) => {
+                    const newTheme = e.target.value as "retro" | "abstract";
+                    setLocal({ ...local, theme: newTheme });
+                    // Appliquer immédiatement le thème pour prévisualisation
+                    document.body.setAttribute('data-theme', newTheme);
+                  }}
+                >
+                  <option value="retro">Retro - Arcade classique</option>
+                  <option value="abstract">Abstract - Moderne et coloré</option>
+                </select>
+              </div>
+              <div className="theme-help-text">
+                Les changements de thème sont appliqués immédiatement. Enregistrez pour conserver vos préférences.
+              </div>
+            </>
+          )}
+
+          {section === 'manettes' && (
+            <ManettesSection />
+          )}
+
+          {section === 'updates' && (
+            <>
+              <h3>Mises à jour</h3>
+              <div className="form-row" style={{ fontSize: '0.65rem' }}>
+                Version actuelle: {currentVersion || '…'}
+              </div>
+              <div className="form-row">
+                <label htmlFor="beta-toggle">Activer les versions bêta</label>
+                <select
+                  id="beta-toggle"
+                  value={String(!!local.updatesBeta)}
+                  onChange={(e) => setLocal({ ...local, updatesBeta: e.target.value === 'true' })}
+                >
+                  <option value="false">Non (stables uniquement)</option>
+                  <option value="true">Oui (inclure les préversions)</option>
+                </select>
+              </div>
+              <div className="form-row" style={{ gap: 8 }}>
+                <button
+                  type="button"
+                  disabled={checkingUpdate}
+                  onClick={async () => {
+                    try {
+                      setCheckingUpdate(true);
+                      setUpdateInfo(null);
+                      const res = await window.updates.check({ beta: !!local.updatesBeta });
+                      if (res.ok && res.update) {
+                        setUpdateInfo(res.update);
+                      } else if (res.ok && !res.update) {
+                        show('Aucune mise à jour disponible');
+                      } else {
+                        show('Échec de la vérification des mises à jour', 'error');
+                      }
+                    } catch (e) {
+                      show('Erreur lors de la vérification', 'error');
+                    } finally {
+                      setCheckingUpdate(false);
+                    }
+                  }}
+                >
+                  {checkingUpdate ? 'Vérification…' : 'Vérifier les mises à jour'}
+                </button>
+                {updateInfo && !downloaded && (
+                  <button
+                    type="button"
+                    className="primary"
+                    disabled={downloading}
+                    onClick={async () => {
+                      setDownloading(true);
+                      setDownloaded(false);
+                      setDownloadProgress(null);
+                      const res = await window.updates.download();
+                      if (!res.ok) {
+                        setDownloading(false);
+                        show(res.error || 'Échec du téléchargement', 'error');
+                      }
+                    }}
+                  >
+                    {downloading ? (downloadProgress != null ? `Téléchargement… ${Math.round(downloadProgress)}%` : 'Téléchargement…') : `Télécharger Pixel ${updateInfo.version}`}
+                  </button>
+                )}
+                {updateInfo && downloaded && (
+                  <button
+                    type="button"
+                    className="primary"
+                    onClick={async () => {
+                      const res = await window.updates.install();
+                      if (!res.ok) show(res.error || "Échec de l'installation", 'error');
+                    }}
+                  >
+                    Installer et redémarrer
+                  </button>
+                )}
+              </div>
+              {updateInfo && (
+                <div className="form-row" style={{ fontSize: '0.55rem', whiteSpace: 'pre-wrap' }}>
+                  <div><strong>Version:</strong> {updateInfo.version}</div>
+                  <div><strong>Notes:</strong></div>
+                  <div>{updateInfo.notes}</div>
+                </div>
+              )}
+            </>
+          )}
+
+          {section === 'quitter' && (
+            <>
+              <h3>Quitter l'application</h3>
+              <p>Fermer Pixel et revenir au système.</p>
+              <div className="form-actions" style={{ justifyContent: 'flex-start' }}>
+                <button type="button" className="primary" onClick={() => window.app.quit()}>Quitter Pixel</button>
+              </div>
+            </>
+          )}
+
+          <div className="form-actions">
+            <button
+              type="button"
+              onClick={() => setSection('menu')}
+            >
+              Annuler (Esc)
+            </button>
+            <button type="submit" className="primary" disabled={!isDirty}>Enregistrer</button>
+          </div>
         </form>
       )}
     </div>

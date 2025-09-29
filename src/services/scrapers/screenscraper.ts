@@ -1,30 +1,8 @@
 import { BaseScraper } from "./base-scraper";
-import {
-  ScrapedGame,
-  ScrapedMedia,
-  ImageType,
-  ScraperCredentials,
-} from "./types";
+import * as path from "path";
+import { ScrapedGame, ScrapedMedia, ScraperCredentials, ImageType } from "./types";
 
-// ScreenScraper specific types
-interface ScreenScraperGame {
-  id: string;
-  nom: string;
-  description?: string;
-  date?: string;
-  genre?: string;
-  developer?: string;
-  publisher?: string;
-  players?: string;
-  rating?: string;
-  medias?: ScreenScraperMedia[];
-}
-
-interface ScreenScraperMedia {
-  type: string;
-  url: string;
-  format: string;
-}
+// Note: media objects from ScreenScraper responses are loosely typed
 
 export interface ScreenScraperCredentials extends ScraperCredentials {
   ssid?: string;
@@ -37,7 +15,8 @@ export interface ScreenScraperCredentials extends ScraperCredentials {
 export class ScreenScraperScraper extends BaseScraper {
   protected readonly name = "ScreenScraper";
   protected readonly userAgent = "pixel-frontend/0.0.1";
-  private readonly baseUrl = "https://www.screenscraper.fr/api2";
+  // Align with official docs host
+  private readonly baseUrl = "https://api.screenscraper.fr/api2";
 
   constructor(private credentials: ScreenScraperCredentials = {}) {
     super(credentials);
@@ -48,26 +27,67 @@ export class ScreenScraperScraper extends BaseScraper {
     systemId: string,
   ): Promise<ScrapedGame | null> {
     try {
+      // If neither user nor developer credentials are provided, ScreenScraper may reject requests.
+      // Avoid hitting the API in that case and surface a clear warning instead of a JSON parse error.
+      const hasUserCreds = !!(this.credentials?.ssid && this.credentials?.sspassword);
+      const hasDevCreds = !!(this.credentials?.devid && this.credentials?.devpassword);
+      if (!hasUserCreds && !hasDevCreds) {
+        console.warn(
+          "ScreenScraper credentials missing: provide either user (ssid + sspassword) or developer (devid + devpassword)."
+        );
+        return null;
+      }
       // Remove file extension and clean filename
       const cleanName = this.cleanRomName(romFileName);
       const sysInput =
         typeof systemId === "string" ? systemId.trim() : systemId;
       const systeme = this.getSystemId(sysInput) || sysInput;
 
+      // Step 0: try direct game info using rom filename (romnom)
+      // This may directly return the right game for filename-like queries (e.g., mslug5)
+      {
+        // The API behaves better without the file extension for romnom
+        const romNomNoExt = path.parse(romFileName).name;
+        const infoFirstParams = new URLSearchParams({
+          output: "json",
+          systemeid: systeme,
+          romtype: "rom",
+          romnom: romNomNoExt,
+        });
+        this.appendAuthParams(infoFirstParams);
+        const infoFirstUrl = `${this.baseUrl}/jeuInfos.php?${infoFirstParams.toString()}`;
+        console.log(
+          `[ScreenScraper] GET ${redactUrl(infoFirstUrl)} (first pass romnom)`,
+        );
+        const infoFirstResp = await fetch(infoFirstUrl, {
+          headers: { "User-Agent": this.userAgent },
+        });
+        if (infoFirstResp.ok) {
+          const infoFirstData = await parseJsonSafe(infoFirstResp, "info");
+          if (infoFirstData && !hasHeaderError(infoFirstData)) {
+            const jeu0 = getJeu(infoFirstData);
+            if (jeu0) {
+              return this.mapToScrapedGame(jeu0);
+            }
+          }
+        } else if (infoFirstResp.status === 429) {
+          console.warn("ScreenScraper API rate limit exceeded");
+          return null;
+        }
+      }
+
       // Step 1: search by name to get the game id
       const searchParams = new URLSearchParams({
         output: "json",
         systemeid: systeme,
         langue: "fr",
+        // Per docs, use 'recherche' for jeuRecherche.php
+        recherche: cleanName,
       });
-      if (isShortRomName(cleanName)) {
-        searchParams.set("romnom", cleanName);
-      } else {
-        searchParams.set("recherche", cleanName);
-      }
       this.appendAuthParams(searchParams);
 
       const searchUrl = `${this.baseUrl}/jeuRecherche.php?${searchParams.toString()}`;
+      console.log(`[ScreenScraper] GET ${redactUrl(searchUrl)}`);
       const searchResp = await fetch(searchUrl, {
         headers: { "User-Agent": this.userAgent },
       });
@@ -94,20 +114,46 @@ export class ScreenScraperScraper extends BaseScraper {
         return null;
       }
 
-      const first = this.pickFirstSearchResult(searchData);
+      let first = this.pickFirstSearchResult(searchData);
+
+      // Fallback: retry search using 'romnom' when 'recherche' yields nothing (helps cases like 'mslug5')
+      if (!first) {
+        const fallbackParams = new URLSearchParams({
+          output: "json",
+          systemeid: systeme,
+          langue: "fr",
+          romnom: cleanName,
+        });
+        this.appendAuthParams(fallbackParams);
+        const fallbackUrl = `${this.baseUrl}/jeuRecherche.php?${fallbackParams.toString()}`;
+        console.log(`[ScreenScraper] GET ${redactUrl(fallbackUrl)} (fallback romnom)`);
+        const fbResp = await fetch(fallbackUrl, {
+          headers: { "User-Agent": this.userAgent },
+        });
+        if (fbResp.ok) {
+          const fbData = await parseJsonSafe(fbResp, "search");
+          if (fbData && !hasHeaderError(fbData)) {
+            first = this.pickFirstSearchResult(fbData);
+          }
+        }
+      }
       const idCandidate = first?.id ?? first?.jeuid ?? first?.idJeu;
-      const jeuid = idCandidate != null ? String(idCandidate) : undefined;
-      if (!jeuid) {
+      const gameId = idCandidate != null ? String(idCandidate) : undefined;
+      if (!gameId) {
         return null;
       }
 
       // Step 2: fetch details by jeuid
       const infoParams = new URLSearchParams({
         output: "json",
-        jeuid: String(jeuid),
+        // Per docs, use 'gameid' to force by numeric game id
+        gameid: String(gameId),
+        // Include systeme id as documented
+        systemeid: systeme,
       });
       this.appendAuthParams(infoParams);
       const infoUrl = `${this.baseUrl}/jeuInfos.php?${infoParams.toString()}`;
+      console.log(`[ScreenScraper] GET ${redactUrl(infoUrl)}`);
       const infoResp = await fetch(infoUrl, {
         headers: { "User-Agent": this.userAgent },
       });
@@ -132,7 +178,7 @@ export class ScreenScraperScraper extends BaseScraper {
       const jeu = getJeu(infoData);
 
       if (jeu) {
-        return this.mapToScrapedGame(jeu as ScreenScraperGame);
+        return this.mapToScrapedGame(jeu);
       }
 
       return null;
@@ -187,7 +233,7 @@ export class ScreenScraperScraper extends BaseScraper {
     const systemMap: Record<string, string> = {
       neogeo: "142",
       snes: "4",
-      model2: "32", // Sega Model 2
+      model2: "54", // Sega Model 2
       nes: "3",
       gameboy: "9",
       gba: "12",
@@ -203,37 +249,39 @@ export class ScreenScraperScraper extends BaseScraper {
   }
 
   protected getImageType(mediaType: string): ImageType | null {
-    const typeMap: Record<string, ImageType> = {
-      "box-2D": "cover",
-      "box-front": "cover",
-      screenmarquee: "title",
-      ss: "screenshot",
-      screenshot: "screenshot",
-    };
-
-    return typeMap[mediaType] || null;
+    // Map ScreenScraper media types to our internal types
+    const t = mediaType.toLowerCase();
+    if (t === "box-2d" || t === "box-front") return "cover";
+    if (t === "sstitle" || t === "screenmarquee" || t === "screenmarqueesmall") return "title";
+    if (t === "ss" || t === "screenshot") return "screenshot";
+    return null;
   }
 
-  private mapToScrapedGame(game: ScreenScraperGame): ScrapedGame {
-    return {
-      id: game.id,
-      name: game.nom,
-      description: game.description,
-      releaseDate: game.date,
-      genre: game.genre,
-      developer: game.developer,
-      publisher: game.publisher,
-      players: game.players,
-      rating: game.rating,
-      media: game.medias?.map(this.mapToScrapedMedia) || [],
-    };
-  }
+  private mapToScrapedGame(jeu: Record<string, unknown>): ScrapedGame {
+    const id = getString(jeu, "id") || getString(jeu, "jeuid") || "";
+    const name = pickJeuName(jeu) || "";
+    const description = pickSynopsis(jeu, ["fr", "en"]) || undefined;
+    const releaseDate = pickReleaseDate(jeu) || undefined;
+    const genre = pickGenres(jeu, ["fr", "en"]) || undefined;
+    const developer = getNestedText(jeu, "developpeur") || undefined;
+    const publisher = getNestedText(jeu, "editeur") || undefined;
+    const players = getNestedText(jeu, "joueurs", "text") || undefined;
+    const rating = getNestedText(jeu, "note", "text") || undefined;
+    const medias = Array.isArray((jeu as any).medias)
+      ? ((jeu as any).medias as any[]).map(mapMediaSafe).filter(Boolean)
+      : [];
 
-  private mapToScrapedMedia(media: ScreenScraperMedia): ScrapedMedia {
     return {
-      type: media.type,
-      url: media.url,
-      format: media.format,
+      id,
+      name,
+      description,
+      releaseDate,
+      genre,
+      developer,
+      publisher,
+      players,
+      rating,
+      media: medias as ScrapedMedia[],
     };
   }
 }
@@ -299,18 +347,16 @@ function hasHeaderError(
   return typeof err === "string" && err.length > 0;
 }
 
-function getJeu(data: unknown): ScreenScraperGame | undefined {
+function getJeu(data: unknown): Record<string, unknown> | undefined {
   if (!isObject(data)) return undefined;
   const respVal = (data as Record<string, unknown>)["response"];
   if (!isObject(respVal)) return undefined;
   const jeuVal = respVal["jeu"];
   if (Array.isArray(jeuVal)) {
     const first = jeuVal[0];
-    return isObject(first)
-      ? (first as unknown as ScreenScraperGame)
-      : undefined;
+    return isObject(first) ? (first as Record<string, unknown>) : undefined;
   }
-  if (isObject(jeuVal)) return jeuVal as unknown as ScreenScraperGame;
+  if (isObject(jeuVal)) return jeuVal as Record<string, unknown>;
   return undefined;
 }
 
@@ -331,4 +377,125 @@ function isShortRomName(name: string): boolean {
   if (n.length === 0) return false;
   if (n.length > 16) return false;
   return /^[a-z0-9._-]+$/i.test(n);
+}
+
+function redactUrl(urlStr: string): string {
+  try {
+    const u = new URL(urlStr);
+    const redactKeys = new Set(["ssid", "sspassword", "devid", "devpassword"]);
+    for (const key of Array.from(u.searchParams.keys())) {
+      if (redactKeys.has(key)) {
+        u.searchParams.set(key, "***");
+      }
+    }
+    return u.toString();
+  } catch {
+    return urlStr;
+  }
+}
+
+// ===== Helpers to parse ScreenScraper structures =====
+function getString(o: Record<string, unknown>, key: string): string | null {
+  const v = o[key];
+  return typeof v === "string" ? v : typeof v === "number" ? String(v) : null;
+}
+
+function getNestedText(
+  o: Record<string, unknown>,
+  key: string,
+  subKey = "text",
+): string | null {
+  const v = o[key];
+  if (typeof v === "string") return v;
+  if (isObject(v)) {
+    const t = (v as Record<string, unknown>)[subKey];
+    return typeof t === "string" ? t : null;
+  }
+  return null;
+}
+
+function pickJeuName(jeu: Record<string, unknown>): string | null {
+  const noms = (jeu as any).noms;
+  if (Array.isArray(noms)) {
+    // prefer regions: ss, wor, eu, us, jp, else first
+    const pref = ["ss", "wor", "eu", "us", "jp"];
+    for (const region of pref) {
+      const found = noms.find((n: any) => n && n.region === region && typeof n.text === "string");
+      if (found) return found.text as string;
+    }
+    const first = noms.find((n: any) => typeof n?.text === "string");
+    if (first) return first.text as string;
+  }
+  // fallback: try plain name fields
+  return getString(jeu, "nom");
+}
+
+function pickSynopsis(
+  jeu: Record<string, unknown>,
+  langsPreferred: string[] = ["fr", "en"],
+): string | null {
+  const syns = (jeu as any).synopsis;
+  if (Array.isArray(syns)) {
+    for (const lang of langsPreferred) {
+      const found = syns.find((s: any) => s && s.langue === lang && typeof s.text === "string");
+      if (found) return found.text as string;
+    }
+    const first = syns.find((s: any) => typeof s?.text === "string");
+    if (first) return first.text as string;
+  }
+  return null;
+}
+
+function pickReleaseDate(jeu: Record<string, unknown>): string | null {
+  const dates = (jeu as any).dates;
+  if (Array.isArray(dates)) {
+    const order = ["wor", "eu", "us", "jp"];
+    for (const region of order) {
+      const found = dates.find((d: any) => d && d.region === region && typeof d.text === "string");
+      if (found) return found.text as string;
+    }
+    const first = dates.find((d: any) => typeof d?.text === "string");
+    if (first) return first.text as string;
+  }
+  return null;
+}
+
+function pickGenres(
+  jeu: Record<string, unknown>,
+  langsPreferred: string[] = ["fr", "en"],
+): string | null {
+  const genres = (jeu as any).genres;
+  if (Array.isArray(genres)) {
+    const names: string[] = [];
+    // Prefer principale === "1"
+    const prim = genres.filter((g: any) => g && (g.principale === "1" || g.principale === 1));
+    const list = prim.length > 0 ? prim : genres;
+    for (const g of list) {
+      const noms = Array.isArray(g?.noms) ? g.noms : [];
+      let added = false;
+      for (const lang of langsPreferred) {
+        const found = noms.find((n: any) => n && n.langue === lang && typeof n.text === "string");
+        if (found) {
+          names.push(found.text as string);
+          added = true;
+          break;
+        }
+      }
+      if (!added) {
+        const first = noms.find((n: any) => typeof n?.text === "string");
+        if (first) names.push(first.text as string);
+      }
+    }
+    if (names.length > 0) return Array.from(new Set(names)).join(" / ");
+  }
+  return null;
+}
+
+function mapMediaSafe(m: any): ScrapedMedia | null {
+  if (!m || typeof m !== "object") return null;
+  const type = typeof m.type === "string" ? m.type : null;
+  const url = typeof m.url === "string" ? m.url : null;
+  const format = typeof m.format === "string" ? m.format : "";
+  if (!url) return null;
+  return { type: type || "", url, format };
 }

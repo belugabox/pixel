@@ -159,10 +159,10 @@ Pour ajouter un nouveau scraper :
 
 L'intégration utilise l'API v2 de ScreenScraper.fr :
 
-- Recherche : `https://www.screenscraper.fr/api2/jeuRecherche.php`
-- Détails par jeu : `https://www.screenscraper.fr/api2/jeuInfos.php`
+- Recherche : `https://api.screenscraper.fr/api2/jeuRecherche.php`
+- Détails par jeu : `https://api.screenscraper.fr/api2/jeuInfos.php`
 - Format : JSON
-- Recherche par nom de fichier ROM nettoyé, puis récupération par `jeuid`
+- Recherche par nom (paramètre `recherche`) avec `systemeid`, puis récupération détaillée par `gameid` (et `systemeid`).
 - Support des identifiants développeur et utilisateur (`ssid`/`sspassword`, `devid`/`devpassword`, `softname`)
 
 ### Dépannage (erreur 400)
