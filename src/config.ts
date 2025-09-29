@@ -26,6 +26,10 @@ export interface System {
   core: string; // core identifier (ex: "fbneo_libretro")
   exclude?: string[]; // list of file names to ignore when scanning (case-insensitive)
   tool?: string; // optional tool id to run before launching the ROM
+  scrapers?: {
+    screenscraper?: { systemId?: string };
+    igdb?: { platformId?: string };
+  };
 }
 
 export interface UserConfig {

@@ -81,6 +81,10 @@ export type Catalog = {
     core: string;
     exclude?: string[];
     tool?: string;
+    scrapers?: {
+      screenscraper?: { systemId?: string };
+      igdb?: { platformId?: string };
+    };
   }>;
 };
 

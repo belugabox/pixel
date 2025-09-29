@@ -1,6 +1,7 @@
 import { BaseScraper } from "./base-scraper";
 import * as path from "path";
 import { ScrapedGame, ScrapedMedia, ScraperCredentials, ImageType } from "./types";
+import { getCatalog } from "../../config";
 
 // Note: media objects from ScreenScraper responses are loosely typed
 
@@ -229,23 +230,20 @@ export class ScreenScraperScraper extends BaseScraper {
   }
 
   protected getSystemId(systemId: string): string | null {
-    // Map internal system IDs to ScreenScraper system IDs
-    const systemMap: Record<string, string> = {
-      neogeo: "142",
-      snes: "4",
-      model2: "54", // Sega Model 2
-      nes: "3",
-      gameboy: "9",
-      gba: "12",
-      genesis: "1",
-      mastersystem: "2",
-      psx: "57",
-      ps2: "58",
-      n64: "14",
-      gamecube: "13",
-    };
-
-    return systemMap[systemId.toLowerCase()] || null;
+    // Lire l'ID ScreenScraper depuis le catalog uniquement (pas de fallback interne)
+    try {
+      const catalog = getCatalog();
+      const sys = catalog.systems.find(
+        (s) => s.id.toLowerCase() === String(systemId).toLowerCase(),
+      ) as (typeof catalog.systems[number] & { scrapers?: { screenscraper?: { systemId?: string } } }) | undefined;
+      const idFromCatalog = sys?.scrapers?.screenscraper?.systemId;
+      if (idFromCatalog && String(idFromCatalog).trim().length > 0) {
+        return String(idFromCatalog);
+      }
+    } catch (e) {
+      console.warn("[ScreenScraper] getSystemId: catalog lookup failed", e);
+    }
+    return null;
   }
 
   protected getImageType(mediaType: string): ImageType | null {

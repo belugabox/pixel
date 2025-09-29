@@ -29,21 +29,24 @@
       "extensions": [".zip", ".neo"],
       "exclude": ["neogeo.zip"],
       "emulator": "retroarch",
-      "core": "fbneo_libretro"
+      "core": "fbneo_libretro",
+      "scrapers": { "screenscraper": { "systemId": "142" } }
     },
     {
       "id": "snes",
       "name": "Super Nintendo",
       "extensions": [".smc", ".sfc", ".fig", ".zip"],
       "emulator": "retroarch",
-      "core": "bsnes_libretro"
+      "core": "bsnes_libretro",
+      "scrapers": { "screenscraper": { "systemId": "4" } }
     },
     {
       "id": "model2",
       "name": "Sega Model 2",
       "extensions": [".zip", ".rom", ".iso"],
       "emulator": "m2emulator",
-      "tool": "demulshooter"
+      "tool": "demulshooter",
+      "scrapers": { "screenscraper": { "systemId": "54" } }
     }
   ]
 }
