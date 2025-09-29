@@ -16,9 +16,21 @@ for (const [path, mod] of Object.entries(modules)) {
 
 export function findLogo(key: string): string | undefined {
   const k = key.toLowerCase();
-  if (logos[k]) return logos[k];
-  const dashed = k.replace(/\s+/g, "-");
-  if (logos[dashed]) return logos[dashed];
+  // Simple alias map to handle locale differences (e.g., "favorites" -> "favoris")
+  const aliases: Record<string, string[]> = {
+    favorites: ["favoris"],
+  };
+
+  const candidates: string[] = [k, k.replace(/\s+/g, "-")];
+  if (aliases[k]) {
+    for (const alt of aliases[k]) {
+      candidates.unshift(alt, alt.replace(/\s+/g, "-"));
+    }
+  }
+
+  for (const c of candidates) {
+    if (logos[c]) return logos[c];
+  }
   return undefined;
 }
 
