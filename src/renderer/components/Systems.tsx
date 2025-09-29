@@ -79,7 +79,11 @@ export function Systems({ onOpen, initialIndex = 0 }: { onOpen: (system: string,
           className="system-tile prev"
           tabIndex={0}
           onFocus={onPrevFocus}
-          onClick={onPrevClick}
+          onMouseDown={(e) => {
+            // Évite double déclenchement (DOWN puis UP) : on gère tout au mousedown
+            e.preventDefault();
+            onPrevClick();
+          }}
           aria-label="Système précédent"
         >
           {len > 0 && (() => {
@@ -114,7 +118,11 @@ export function Systems({ onOpen, initialIndex = 0 }: { onOpen: (system: string,
           className="system-tile next"
           tabIndex={0}
           onFocus={onNextFocus}
-          onClick={onNextClick}
+          onMouseDown={(e) => {
+            // Évite double déclenchement (DOWN puis UP) : on gère tout au mousedown
+            e.preventDefault();
+            onNextClick();
+          }}
           aria-label="Système suivant"
         >
           {len > 0 && (() => {
