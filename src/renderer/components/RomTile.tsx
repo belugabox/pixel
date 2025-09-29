@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { GameMetadata } from '../types';
 import { useToast } from './Toast';
 
@@ -13,6 +13,11 @@ export function RomTile({ fileName, systemId }: RomTileProps) {
   const { show } = useToast();
   const [screenshotSrc, setScreenshotSrc] = useState<string | null>(null);
   const [wheelSrc, setWheelSrc] = useState<string | null>(null);
+  const [videoSrc, setVideoSrc] = useState<string | null>(null);
+  const [isFocused, setIsFocused] = useState<boolean>(false);
+  const [showVideo, setShowVideo] = useState<boolean>(false);
+  const focusTimerRef = useRef<number | null>(null);
+  const videoRef = useRef<HTMLVideoElement | null>(null);
   const [favored, setFavored] = useState<boolean>(false);
 
   const toFileUrl = (absPath: string) => {
@@ -62,8 +67,60 @@ export function RomTile({ fileName, systemId }: RomTileProps) {
       } else {
         setWheelSrc(null);
       }
+      // Video (normalized)
+      const v = metadata?.videos?.normalized;
+      if (v) {
+        if (isRemote(v)) {
+          setVideoSrc(v);
+        } else {
+          // Load local video as data URL to avoid file:/// CSP restrictions
+          try {
+            const dataUri = await window.video.load(v);
+            setVideoSrc(dataUri || null);
+          } catch (_) {
+            setVideoSrc(null);
+          }
+        }
+      } else {
+        setVideoSrc(null);
+      }
     })();
   }, [metadata, systemId]);
+
+  // Handle focus-based delayed video reveal
+  useEffect(() => {
+    // Clear any pending timer
+    if (focusTimerRef.current) {
+      window.clearTimeout(focusTimerRef.current);
+      focusTimerRef.current = null;
+    }
+    if (isFocused && videoSrc) {
+      focusTimerRef.current = window.setTimeout(() => {
+        setShowVideo(true);
+      }, 500);
+    } else {
+      // Hide video immediately when losing focus or no video
+      setShowVideo(false);
+    }
+    return () => {
+      if (focusTimerRef.current) {
+        window.clearTimeout(focusTimerRef.current);
+        focusTimerRef.current = null;
+      }
+    };
+  }, [isFocused, videoSrc]);
+
+  // Pause/reset video when hidden
+  useEffect(() => {
+    if (!showVideo && videoRef.current) {
+      try {
+        videoRef.current.pause();
+        videoRef.current.currentTime = 0;
+      } catch (_) {
+        // ignore
+      }
+    }
+  }, [showVideo]);
 
   const launch = async () => {
     try {
@@ -95,11 +152,13 @@ export function RomTile({ fileName, systemId }: RomTileProps) {
       onClick={launch}
       role="button"
       tabIndex={0}
+      onFocus={() => setIsFocused(true)}
+      onBlur={() => setIsFocused(false)}
       onKeyDown={(e) => {
         if (e.key === 'Enter') launch();
       }}
     >
-      {screenshotSrc ? (
+      {!showVideo && screenshotSrc ? (
         <img
           src={screenshotSrc}
           alt={metadata?.name || fileName}
@@ -107,16 +166,28 @@ export function RomTile({ fileName, systemId }: RomTileProps) {
           onError={() => setScreenshotSrc(null)}
         />
       ) : (
-        <div className="rom-bg" aria-hidden="true" />
+        !showVideo && <div className="rom-bg" aria-hidden="true" />
       )}
 
-      {wheelSrc && (
+      {!showVideo && wheelSrc && (
         <img
           src={wheelSrc}
           alt="wheel"
           className="rom-wheel"
           onError={() => setWheelSrc(null)}
           draggable={false}
+        />
+      )}
+
+      {showVideo && videoSrc && (
+        <video
+          ref={videoRef}
+          className="rom-video"
+          src={videoSrc}
+          muted
+          loop
+          autoPlay
+          playsInline
         />
       )}
 

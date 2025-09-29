@@ -544,6 +544,18 @@ textarea {
     box-shadow 0.2s ease;
   width: 300px; /* fixed width to form a visual grid with flex-wrap */
   /* 4:3 area + caption bar (~36px) */
+
+  /* Video layer - replaces screenshot+wheel when focused 500ms */
+  .rom-video {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: calc(100% - 36px);
+    object-fit: cover;
+    background: #000;
+    pointer-events: none;
+  }
   height: calc(300px * 3 / 4 + 36px);
 }
 

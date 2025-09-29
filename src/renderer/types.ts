@@ -136,6 +136,9 @@ declare global {
     image: {
       load(absPath: string): Promise<string | null>;
     };
+    video: {
+      load(absPath: string): Promise<string | null>;
+    };
     favorites: {
       list(): Promise<Array<{ systemId: string; fileName: string }>>;
       is(systemId: string, fileName: string): Promise<boolean>;

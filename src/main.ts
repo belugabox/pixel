@@ -699,6 +699,25 @@ app.whenReady().then(async () => {
     },
   );
 
+  ipcMain.handle(
+    "video:load",
+    async (_evt: IPCEventLike, absPath: string): Promise<string | null> => {
+      try {
+        const data = await fs.readFile(absPath);
+        const ext = path.extname(absPath).toLowerCase();
+        let mime = "video/mp4";
+        if (ext === ".webm") mime = "video/webm";
+        else if (ext === ".mp4") mime = "video/mp4";
+        else if (ext === ".m4v") mime = "video/mp4";
+        else if (ext === ".ogg" || ext === ".ogv") mime = "video/ogg";
+        return `data:${mime};base64,${data.toString("base64")}`;
+      } catch (e) {
+        console.error("Failed to load video:", absPath, e);
+        return null;
+      }
+    },
+  );
+
   ipcMain.handle("favorites:list", async () => {
     return loadFavorites();
   });

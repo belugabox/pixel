@@ -232,6 +232,11 @@ contextBridge.exposeInMainWorld("image", {
     ipcRenderer.invoke("image:load", absPath),
 });
 
+contextBridge.exposeInMainWorld("video", {
+  load: async (absPath: string): Promise<string | null> =>
+    ipcRenderer.invoke("video:load", absPath),
+});
+
 contextBridge.exposeInMainWorld("favorites", {
   list: async (): Promise<Array<{ systemId: string; fileName: string }>> =>
     ipcRenderer.invoke("favorites:list"),
