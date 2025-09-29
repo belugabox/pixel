@@ -1,79 +1,101 @@
-# pixel
+# Pixel
 
-Retrogaming Frontend
+**Pixel** est un frontend de retrogaming élégant et minimaliste, conçu pour organiser et lancer vos jeux rétro préférés avec une interface simple et navigable à la manette.
 
-## Instructions importantes pour les contributeurs
+<!-- Suggestion : Ajoutez une capture d'écran de l'application ici -->
+<!-- ![Aperçu de Pixel](lien_vers_votre_screenshot.png) -->
 
-⚠️ **ATTENTION** : Ce projet utilise exclusivement le français pour toute la documentation, les commentaires, et les communications. Consultez [AI_INSTRUCTIONS.md](./AI_INSTRUCTIONS.md) pour les directives complètes destinées aux développeurs et aux intelligences artificielles.
+## Fonctionnalités
 
-## Configuration JSON
+*   **Navigation intuitive** : Conçu pour être utilisé principalement à la manette.
+*   **Organisation par système** : Vos jeux sont groupés par console ou système d'origine.
+*   **Scraping de métadonnées** : Récupération automatique des informations et jaquettes de vos jeux (via ScreenScraper).
+*   **Personnalisation** : Thèmes et autres options configurables.
+*   **Détection globale de raccourcis** : Quittez un émulateur ou revenez au menu principal grâce à un raccourci manette (Start + Select), même si l'application n'est pas en focus.
+
+## Installation
+
+Pour faire tourner Pixel en local, suivez ces étapes :
+
+1.  **Clonez le dépôt :**
+    ```bash
+    git clone https://github.com/belugabox/pixel.git
+    cd pixel
+    ```
+
+2.  **Installez les dépendances :**
+    Ce projet utilise Node.js v20. Si vous utilisez `nvm`, lancez `nvm use`.
+    ```bash
+    npm install
+    ```
+
+3.  **Compilez l'addon natif (pour Windows) :**
+    Pour que la détection des raccourcis manette fonctionne, vous devez compiler le module natif. Consultez la section [Prérequis pour la compilation](#prérequis-pour-la-compilation-windows) ci-dessous.
+    ```bash
+    npm run build:native
+    ```
+
+## Utilisation
+
+Une fois l'installation terminée, lancez l'application en mode développement :
+
+```bash
+npm start
+```
+
+## Pour les développeurs
+
+Cette section contient des informations techniques pour ceux qui souhaitent contribuer au projet.
+
+### Instructions importantes pour les contributeurs
+
+⚠️ **ATTENTION** : Ce projet utilise exclusivement le français pour toute la documentation, les commentaires, et les communications. Consultez [AI_INSTRUCTIONS.md](./AI_INSTRUCTIONS.md) pour les directives complètes.
+
+### Configuration JSON
 
 Un fichier `config.json` est stocké dans le dossier `userData` d'Electron (ex: `%APPDATA%/pixel/config.json`).
 
-APIs dispo côté renderer via `window.config` (exposées par `preload`):
+Des APIs sont disponibles dans le processus *renderer* via l'objet `window.config` (exposé par `src/preload.ts`) :
 
-- `await window.config.get()` → lit la configuration
-- `await window.config.set(cfg)` → écrit la configuration
+*   `await window.config.get()` : Lit la configuration actuelle.
+*   `await window.config.set(cfg)` : Écrit une nouvelle configuration.
 
-Exemple d'usage (renderer):
-
+**Exemple d'usage (côté renderer) :**
 ```ts
 const cfg = await window.config.get();
 await window.config.set({ ...cfg, theme: "dark" });
 ```
 
-## Addon natif XInput (détection globale Start+Select)
+### Addon natif XInput (détection globale Start+Select)
 
-La détection globale (même fenêtre hors focus) s'appuie désormais exclusivement sur un addon N-API minimal dans `native/xinput`. L'ancien chemin basé sur `ffi-napi` / `ref-napi` a été totalement retiré.
+La détection globale des raccourcis manette (même lorsque la fenêtre est hors focus) s'appuie sur un addon N-API minimal situé dans `native/xinput`.
 
-### Prérequis build (Windows)
+#### Prérequis pour la compilation (Windows)
 
-1. Node 20 LTS (voir `.nvmrc`).
-2. Python 3.11+ (dans le PATH).
-3. Microsoft Build Tools 2022 (C++ workload + Windows 10/11 SDK).
-4. Redémarrez le terminal après installation.
+1.  **Node.js v20 LTS** (voir le fichier `.nvmrc`).
+2.  **Python 3.11+** (disponible dans le PATH).
+3.  **Microsoft Build Tools 2022** (avec la charge de travail "Développement Desktop en C++" et le SDK Windows 10/11).
+4.  Redémarrez votre terminal après ces installations.
 
-Validation rapide manuelle :
-
+Vous pouvez valider votre environnement avec :
 ```cmd
 node -v
 python --version
 where MSBuild.exe
 ```
 
-### Compilation de l'addon
+#### Compilation de l'addon
+
+La commande suivante compile l'addon et copie le binaire (`.node`) dans le dossier `dist-native` pour qu'il soit accessible par l'application.
 
 ```cmd
-npm run build:native   # compile puis copie automatique du binaire dans dist-native
+npm run build:native
 ```
 
-Test rapide (interaction):
-
+Pour tester rapidement que l'addon fonctionne, branchez une manette XInput et lancez :
 ```cmd
-npm run test:xinput   # attend 10s un combo Start+Back et affiche le résultat
+npm run test:xinput
 ```
+Ce script attend pendant 10 secondes que vous pressiez le combo **Start + Back** (ou équivalent).
 
-Le binaire attendu : `native/xinput/build/Release/xinput_native.node`.
-
-Chargement dynamique géré par `src/services/xinput-native-addon.ts`; utilisation dans `src/services/xinput-global.ts`.
-
-### Vérifier l'activation
-
-Dans la console (process principal ou renderer selon l'intégration), appeler `isGlobalWatcherActive()` après démarrage. Si `false`, l'addon n'a pas été chargé (aucune détection globale ne sera effectuée – il n'existe plus de fallback FFI).
-
-### Avantages
-
-- Surface native réduite (moins de dépendances fragiles)
-- Pas de libffi ni toolchain exotique
-- Chemins XInput résolus dynamiquement (1_4 -> 1_3 -> 9_1_0)
-
-### Migration (historique)
-
-Les versions précédentes utilisaient `ffi-napi` + `ref-napi`. Des problèmes de compilation (notamment l'erreur libffi `call "call"`) sur certains environnements ont motivé l'écriture d'un binding dédié. Toute la logique de fallback FFI a été supprimée; si vous voyez encore des références FFI dans un fork local, rebasez sur `main`.
-
-Le script historique `rebuild:natives` a été retiré (il n'apportait qu'un message). Utilisez uniquement `npm run build:native`.
-
-### Prochaines étapes possibles
-
-- Prébuilds CI (Windows x64) pour éviter la toolchain locale
-- Ajout d'un test automatisé simulant une séquence Start+Select
+Le chargement de l'addon est géré dynamiquement par `src/services/xinput-native-addon.ts`.
