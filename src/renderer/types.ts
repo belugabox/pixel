@@ -161,5 +161,10 @@ declare global {
       onDownloaded(handler: (info: unknown) => void): () => void;
       onError(handler: (msg: string) => void): () => void;
     };
+    logs: {
+      get(limit?: number): Promise<Array<{ ts: number; level: 'log' | 'warn' | 'error'; args: unknown[] }>>;
+      clear(): Promise<{ ok: true }>;
+      onAppend(handler: (entry: { ts: number; level: 'log' | 'warn' | 'error'; args: unknown[] }) => void): () => void;
+    };
   }
 }

@@ -43,6 +43,23 @@ if (started) {
   app.quit();
 }
 
+// --- In-memory logs buffer & console hijack ---
+type LogEntry = { ts: number; level: 'log' | 'warn' | 'error'; args: unknown[] };
+const LOG_MAX = 2000;
+const logsBuffer: LogEntry[] = [];
+const pushLog = (level: LogEntry['level'], args: unknown[]) => {
+  logsBuffer.push({ ts: Date.now(), level, args });
+  if (logsBuffer.length > LOG_MAX) logsBuffer.splice(0, logsBuffer.length - LOG_MAX);
+  try {
+    const win = BrowserWindow.getAllWindows()[0];
+    win?.webContents.send('logs:append', { ts: Date.now(), level, args });
+  } catch { /* ignore */ }
+};
+const rawConsole = { ...console };
+console.log = (...args: unknown[]) => { rawConsole.log(...args); pushLog('log', args); };
+console.warn = (...args: unknown[]) => { rawConsole.warn(...args); pushLog('warn', args); };
+console.error = (...args: unknown[]) => { rawConsole.error(...args); pushLog('error', args); };
+
 const createWindow = () => {
   const mainWindow = new BrowserWindow({
     width: 800,
@@ -154,6 +171,17 @@ app.whenReady().then(async () => {
 
   ipcMain.handle("app:version", async () => {
     return app.getVersion();
+  });
+
+  // Logs IPC
+  ipcMain.handle('logs:get', async (_: IPCEventLike, opts?: { limit?: number }) => {
+    const limit = Math.max(0, Math.min(10000, opts?.limit ?? 1000));
+    const slice = logsBuffer.slice(-limit);
+    return slice;
+  });
+  ipcMain.handle('logs:clear', async () => {
+    logsBuffer.splice(0, logsBuffer.length);
+    return { ok: true } as const;
   });
 
   // Auto-update via electron-updater

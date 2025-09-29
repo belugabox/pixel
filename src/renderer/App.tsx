@@ -4,6 +4,7 @@ import { useUserConfig } from './hooks/useUserConfig';
 import { Systems } from './components/Systems';
 import { Roms } from './components/Roms';
 import { SettingsButton } from './components/SettingsButton';
+import { LogsModal } from './components/LogsModal';
 import { SettingsModal } from './components/SettingsModal';
 import { useToast } from './components/Toast';
 import { setInputMode } from './inputMode';
@@ -12,6 +13,7 @@ export default function App() {
   const { cfg, save, refresh } = useUserConfig();
   const [view, setView] = useState<View>({ name: 'systems' });
   const [showSettings, setShowSettings] = useState(false);
+  const [showLogs, setShowLogs] = useState(false);
   const { show } = useToast();
   const lastKillRef = useRef(0);
   const RAF_REF = useRef(0);
@@ -150,12 +152,12 @@ export default function App() {
 
   // Query global watcher status once and then every 5s while overlay visible
   useEffect(() => {
-  let t: number | undefined;
+    let t: number | undefined;
     const tick = async () => {
       if (window.gamepad?.isGlobalActive) {
         try { setGlobalWatcher(await window.gamepad.isGlobalActive()); } catch { /* ignore */ }
       }
-  t = window.setTimeout(tick, 5000);
+      t = window.setTimeout(tick, 5000);
     };
     if (debugPad) { tick(); }
     return () => { if (t) clearTimeout(t); };
@@ -167,8 +169,13 @@ export default function App() {
         setDebugPad(d => !d);
         return;
       }
+      if ((e.ctrlKey || e.metaKey) && e.altKey && e.key.toLowerCase() === 'l') {
+        setShowLogs(v => !v);
+        return;
+      }
       if (e.key === 'Escape') {
         if (showSettings) { setShowSettings(false); return; }
+        if (showLogs) { setShowLogs(false); return; }
         if (view.name === 'roms') { setView({ name: 'systems' }); return; }
         setShowSettings(true);
       }
@@ -218,7 +225,7 @@ export default function App() {
         <Roms system={view.system} onBack={() => setView({ name: 'systems' })} />
       )}
 
-  <SettingsButton onOpen={() => setShowSettings(true)} />
+      <SettingsButton onOpen={() => setShowSettings(true)} />
       {showSettings && (
         <div
           id="settings-modal"
@@ -233,6 +240,9 @@ export default function App() {
             onSave={async (c) => { await save(c); await refresh(); }}
           />
         </div>
+      )}
+      {showLogs && (
+        <LogsModal onClose={() => setShowLogs(false)} />
       )}
     </main>
   );

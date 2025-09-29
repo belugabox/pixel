@@ -127,6 +127,17 @@ contextBridge.exposeInMainWorld("app", {
   version: async (): Promise<string> => ipcRenderer.invoke("app:version"),
 });
 
+contextBridge.exposeInMainWorld("logs", {
+  get: async (limit?: number): Promise<Array<{ ts: number; level: 'log' | 'warn' | 'error'; args: unknown[] }>> =>
+    ipcRenderer.invoke('logs:get', { limit }),
+  clear: async (): Promise<{ ok: true }> => ipcRenderer.invoke('logs:clear'),
+  onAppend: (handler: (entry: { ts: number; level: 'log' | 'warn' | 'error'; args: unknown[] }) => void): (() => void) => {
+    const listener = (_: unknown, entry: { ts: number; level: 'log' | 'warn' | 'error'; args: unknown[] }) => handler(entry);
+    ipcRenderer.on('logs:append', listener);
+    return () => ipcRenderer.removeListener('logs:append', listener);
+  }
+});
+
 contextBridge.exposeInMainWorld("updates", {
   check: async (opts?: { beta?: boolean }) =>
     ipcRenderer.invoke("updates:check", opts) as Promise<
