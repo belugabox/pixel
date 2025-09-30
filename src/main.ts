@@ -23,6 +23,7 @@ import type {
   AllDownloadResult,
   SystemDownloadResult,
 } from "./services/scrapers/types";
+import { showLaunchSplash, setCurrentEmulator } from "./splash-window";
 
 // Minimal event type (opaque) for IPC invoke handlers
 interface IPCEventLike {
@@ -111,6 +112,7 @@ app.on("ready", () => {
         }
         console.log("[xinput] Emulator terminated via Start+Select");
         currentEmulator = null;
+        setCurrentEmulator(null);
         const win = BrowserWindow.getAllWindows()[0];
         win?.webContents.send("emulator:terminated");
         win?.webContents.send("gamepad:combo");
@@ -494,6 +496,9 @@ app.whenReady().then(async () => {
           path.dirname(exePath) + ")",
         );
 
+        // Show launch splash screen
+        showLaunchSplash(systemId, romFileName);
+
         const child = spawn(exePath, builtArgs, {
           cwd: path.dirname(exePath),
           detached: true,
@@ -501,8 +506,12 @@ app.whenReady().then(async () => {
         });
         child.unref();
         currentEmulator = child;
+        setCurrentEmulator(child);
         child.once("exit", () => {
-          if (currentEmulator === child) currentEmulator = null;
+          if (currentEmulator === child) {
+            currentEmulator = null;
+            setCurrentEmulator(null);
+          }
         });
         return { ok: true };
       } catch (e) {
@@ -522,6 +531,7 @@ app.whenReady().then(async () => {
           console.warn("Kill failed (IPC):", e);
         }
         currentEmulator = null;
+        setCurrentEmulator(null);
         console.log("[roms:killActive] Killed emulator pid", pid);
         return { ok: true };
       }
@@ -797,6 +807,7 @@ app.whenReady().then(async () => {
         }
         console.log("[globalShortcut] Emulator terminated via shortcut");
         currentEmulator = null;
+        setCurrentEmulator(null);
         const win = BrowserWindow.getAllWindows()[0];
         win?.webContents.send("emulator:terminated");
       }
