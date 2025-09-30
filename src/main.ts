@@ -131,7 +131,6 @@ app.whenReady().then(async () => {
   // Configure autoUpdater feed (GitHub provider is default for electron-updater)
   try {
     // Lazy require to avoid crashing if module missing
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const upd = require("electron-updater");
     autoUpdater = upd?.autoUpdater ?? null;
     if (autoUpdater) {

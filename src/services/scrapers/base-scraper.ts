@@ -14,7 +14,7 @@ export abstract class BaseScraper {
   protected abstract readonly name: string;
   protected abstract readonly userAgent: string;
 
-  constructor(protected config: ScraperConfig = {}) { }
+  constructor(protected config: ScraperConfig = {}) {}
 
   /**
    * Search for a game by ROM filename and system
@@ -39,16 +39,24 @@ export abstract class BaseScraper {
    * Default: no video support; scrapers can override.
    */
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  protected getVideoType(mediaType: string): 'normalized' | null { return null; }
+  protected getVideoType(mediaType: string): "normalized" | null {
+    return null;
+  }
 
   /**
    * Optional quality priority for images of the same ImageType.
    * Higher number wins. Default 0 (no preference).
    * Scrapers can override to prefer HD variants (e.g., ScreenScraper 'wheel-hd').
    */
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  protected getImageQualityPriority(imageType: ImageType, mediaType: string, format?: string): number {
-    void imageType; void mediaType; void format; return 0;
+  protected getImageQualityPriority(
+    imageType: ImageType,
+    mediaType: string,
+    format?: string,
+  ): number {
+    void imageType;
+    void mediaType;
+    void format;
+    return 0;
   }
 
   /**
@@ -88,22 +96,46 @@ export abstract class BaseScraper {
       // Download images/videos if available
       if (game.media && game.media.length > 0) {
         // First pass: pick best image per type based on quality
-        const bestImages: Partial<Record<ImageType, { url: string; mediaType: string; score: number; format?: string }>> = {};
+        const bestImages: Partial<
+          Record<
+            ImageType,
+            { url: string; mediaType: string; score: number; format?: string }
+          >
+        > = {};
         for (const media of game.media) {
           const imageType = this.getImageType(media.type);
           if (imageType) {
-            const score = this.getImageQualityPriority(imageType, media.type, media.format);
+            const score = this.getImageQualityPriority(
+              imageType,
+              media.type,
+              media.format,
+            );
             const current = bestImages[imageType];
             if (!current || score > current.score) {
-              bestImages[imageType] = { url: media.url, mediaType: media.type, score, format: media.format };
+              bestImages[imageType] = {
+                url: media.url,
+                mediaType: media.type,
+                score,
+                format: media.format,
+              };
             }
             continue;
           }
         }
         // Second pass: download selected images
-        for (const [imgType, selected] of Object.entries(bestImages) as Array<[ImageType, { url: string; mediaType: string; score: number; format?: string }]>) {
+        for (const [imgType, selected] of Object.entries(bestImages) as Array<
+          [
+            ImageType,
+            { url: string; mediaType: string; score: number; format?: string },
+          ]
+        >) {
           try {
-            const imagePath = await this.downloadImage(selected.url, metadataDir, romFileName, imgType);
+            const imagePath = await this.downloadImage(
+              selected.url,
+              metadataDir,
+              romFileName,
+              imgType,
+            );
             if (imagePath) {
               metadata.images[imgType] = imagePath;
             }
@@ -123,7 +155,8 @@ export abstract class BaseScraper {
             );
             if (videoPath) {
               metadata.videos = metadata.videos || {};
-              if (videoType === 'normalized') metadata.videos.normalized = videoPath;
+              if (videoType === "normalized")
+                metadata.videos.normalized = videoPath;
             }
           }
         }
@@ -221,7 +254,9 @@ export abstract class BaseScraper {
       // Apply exclude filters from opts (case-insensitive, wildcards, basename)
       const before = romFiles.slice();
       if (opts?.exclude && opts.exclude.length > 0) {
-        romFiles = romFiles.filter((name) => !shouldExclude(name, opts.exclude));
+        romFiles = romFiles.filter(
+          (name) => !shouldExclude(name, opts.exclude),
+        );
         const excluded = before.filter((n) => !romFiles.includes(n));
         if (excluded.length > 0) {
           console.log(
@@ -263,7 +298,11 @@ export abstract class BaseScraper {
           const md = await this.downloadMetadata(romFile, systemId, romsRoot);
           if (md) {
             result.created++;
-            result.items.push({ fileName: romFile, status: "created", metadata: md });
+            result.items.push({
+              fileName: romFile,
+              status: "created",
+              metadata: md,
+            });
           } else {
             result.failed++;
             result.items.push({ fileName: romFile, status: "failed" });
@@ -368,21 +407,26 @@ export abstract class BaseScraper {
     url: string,
     metadataDir: string,
     romFileName: string,
-    subtype: 'normalized',
+    subtype: "normalized",
   ): Promise<string | null> {
     try {
       const response = await fetch(url, {
         headers: {
-          'User-Agent': this.userAgent,
+          "User-Agent": this.userAgent,
         },
       });
       if (!response.ok) return null;
       const buffer = await response.arrayBuffer();
-      const ct = (response.headers.get('content-type') || '').toLowerCase();
-      let ext = '.mp4';
-      if (ct.includes('webm')) ext = '.webm';
-      else if (ct.includes('ogg')) ext = '.ogg';
-      else if (ct.includes('x-matroska') || ct.includes('matroska') || ct.includes('mkv')) ext = '.mkv';
+      const ct = (response.headers.get("content-type") || "").toLowerCase();
+      let ext = ".mp4";
+      if (ct.includes("webm")) ext = ".webm";
+      else if (ct.includes("ogg")) ext = ".ogg";
+      else if (
+        ct.includes("x-matroska") ||
+        ct.includes("matroska") ||
+        ct.includes("mkv")
+      )
+        ext = ".mkv";
       const fileName = `${path.parse(romFileName).name}_video-${subtype}${ext}`;
       const filePath = path.join(metadataDir, fileName);
       await fs.writeFile(filePath, Buffer.from(buffer));

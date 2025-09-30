@@ -94,7 +94,7 @@ export async function ensureConfig(userDataPath: string): Promise<UserConfig> {
         await saveConfig(userDataPath, merged);
       }
       return merged;
-    } catch (parseErr) {
+    } catch {
       // Backup invalid file then write defaults
       await fs.writeFile(cfgPath + ".bak", raw, "utf-8");
       await saveConfig(userDataPath, defaultConfig);

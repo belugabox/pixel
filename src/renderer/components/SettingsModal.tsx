@@ -631,7 +631,7 @@ export function SettingsModal({ cfg, onClose, onSave }:
                       } else {
                         show('Échec de la vérification des mises à jour', 'error');
                       }
-                    } catch (e) {
+                    } catch {
                       show('Erreur lors de la vérification', 'error');
                     } finally {
                       setCheckingUpdate(false);

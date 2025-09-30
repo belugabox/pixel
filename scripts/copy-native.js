@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-var-requires */
 // Script de copie du binaire natif après build pour simplifier la résolution.
 // Usage: node scripts/copy-native.js
 const fs = require('fs');

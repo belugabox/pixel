@@ -110,7 +110,7 @@ export default function App() {
           comboStartRef.current = null;
           comboTriggeredRef.current = false;
         }
-      } catch (e) {
+      } catch {
         // ignore polling errors
       }
       RAF_REF.current = requestAnimationFrame(poll);

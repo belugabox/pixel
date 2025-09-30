@@ -60,7 +60,7 @@ export function Roms({ system, onBack }: { system: string; onBack: () => void })
         try {
           await window.favorites.toggle(sys, file);
           // Changes are handled by favorites:changed subscription
-        } catch (e) {
+        } catch {
           // ignore
         }
       }

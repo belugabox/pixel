@@ -29,7 +29,7 @@ function loadDirect() {
     const m = tryRequire(c);
     if (m && m.Watcher) return m;
   }
-  try { const m = require('xinput_native'); if (m && m.Watcher) return m; } catch (e) { /* ignore */ }
+  try { const m = require('xinput_native'); if (m && m.Watcher) return m; } catch { /* ignore */ }
   return null;
 }
 

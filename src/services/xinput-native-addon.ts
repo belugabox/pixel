@@ -38,7 +38,6 @@ export function loadAddon() {
   let appPath: string | undefined;
   let resourcesPath: string | undefined;
   try {
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { app } = require("electron") as typeof import("electron");
     if (app?.getAppPath) appPath = app.getAppPath();
     const proc = process as NodeJS.Process & {
@@ -102,7 +101,6 @@ export function loadAddon() {
   // Direct require fallback (NODE_PATH / global install)
   try {
     console.log("[xinput-native] Trying direct require('xinput_native')...");
-    // eslint-disable-next-line @typescript-eslint/no-var-requires
     const direct = require("xinput_native");
     if (direct?.Watcher) {
       console.log("[xinput-native] Successfully loaded addon via module name");

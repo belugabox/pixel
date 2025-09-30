@@ -38,7 +38,7 @@ export function RomTile({ fileName, systemId }: RomTileProps) {
         try {
           const isFav = await window.favorites.is(systemId, fileName);
           setFavored(isFav);
-        } catch (e) {
+        } catch {
           // ignore favorite state load error (non-blocking)
         }
       } catch (e) {
@@ -77,7 +77,7 @@ export function RomTile({ fileName, systemId }: RomTileProps) {
           try {
             const dataUri = await window.video.load(v);
             setVideoSrc(dataUri || null);
-          } catch (_) {
+          } catch {
             setVideoSrc(null);
           }
         }
@@ -116,7 +116,7 @@ export function RomTile({ fileName, systemId }: RomTileProps) {
       try {
         videoRef.current.pause();
         videoRef.current.currentTime = 0;
-      } catch (_) {
+      } catch {
         // ignore
       }
     }

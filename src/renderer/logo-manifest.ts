@@ -1,7 +1,6 @@
 // Generated at runtime via Vite glob import.
 // Provides a map from base filename (lowercase, no extension) to URL.
 
-// eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-expect-error Vite glob import meta provided at build time
 const modules = import.meta.glob("../assets/systems/*.{png,svg,jpg,jpeg}", {
   eager: true,
