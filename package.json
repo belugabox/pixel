@@ -10,7 +10,7 @@
     "make": "electron-forge make",
     "publish": "electron-forge publish",
     "lint": "eslint --ext .ts,.tsx .",
-  "check:ts": "tsc --noEmit",
+    "check:ts": "tsc --noEmit",
     "test:screenscraper": "npx ts-node --project tsconfig.ts-node.json scripts/test-screenscraper.ts",
     "build:native": "cd native/xinput && node-gyp rebuild && npm run copy:native",
     "copy:native": "node scripts/copy-native.js",

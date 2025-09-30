@@ -41,21 +41,37 @@ if (started) {
 }
 
 // --- In-memory logs buffer & console hijack ---
-type LogEntry = { ts: number; level: 'log' | 'warn' | 'error'; args: unknown[] };
+type LogEntry = {
+  ts: number;
+  level: "log" | "warn" | "error";
+  args: unknown[];
+};
 const LOG_MAX = 2000;
 const logsBuffer: LogEntry[] = [];
-const pushLog = (level: LogEntry['level'], args: unknown[]) => {
+const pushLog = (level: LogEntry["level"], args: unknown[]) => {
   logsBuffer.push({ ts: Date.now(), level, args });
-  if (logsBuffer.length > LOG_MAX) logsBuffer.splice(0, logsBuffer.length - LOG_MAX);
+  if (logsBuffer.length > LOG_MAX)
+    logsBuffer.splice(0, logsBuffer.length - LOG_MAX);
   try {
     const win = BrowserWindow.getAllWindows()[0];
-    win?.webContents.send('logs:append', { ts: Date.now(), level, args });
-  } catch { /* ignore */ }
+    win?.webContents.send("logs:append", { ts: Date.now(), level, args });
+  } catch {
+    /* ignore */
+  }
 };
 const rawConsole = { ...console };
-console.log = (...args: unknown[]) => { rawConsole.log(...args); pushLog('log', args); };
-console.warn = (...args: unknown[]) => { rawConsole.warn(...args); pushLog('warn', args); };
-console.error = (...args: unknown[]) => { rawConsole.error(...args); pushLog('error', args); };
+console.log = (...args: unknown[]) => {
+  rawConsole.log(...args);
+  pushLog("log", args);
+};
+console.warn = (...args: unknown[]) => {
+  rawConsole.warn(...args);
+  pushLog("warn", args);
+};
+console.error = (...args: unknown[]) => {
+  rawConsole.error(...args);
+  pushLog("error", args);
+};
 
 const createWindow = () => {
   const mainWindow = new BrowserWindow({
@@ -171,12 +187,15 @@ app.whenReady().then(async () => {
   });
 
   // Logs IPC
-  ipcMain.handle('logs:get', async (_: IPCEventLike, opts?: { limit?: number }) => {
-    const limit = Math.max(0, Math.min(10000, opts?.limit ?? 1000));
-    const slice = logsBuffer.slice(-limit);
-    return slice;
-  });
-  ipcMain.handle('logs:clear', async () => {
+  ipcMain.handle(
+    "logs:get",
+    async (_: IPCEventLike, opts?: { limit?: number }) => {
+      const limit = Math.max(0, Math.min(10000, opts?.limit ?? 1000));
+      const slice = logsBuffer.slice(-limit);
+      return slice;
+    },
+  );
+  ipcMain.handle("logs:clear", async () => {
     logsBuffer.splice(0, logsBuffer.length);
     return { ok: true } as const;
   });
@@ -534,7 +553,11 @@ app.whenReady().then(async () => {
           | "screenscraper";
         service.setDefaultScraper(defScraper);
         // Même si romsRoot n'est pas défini, on peut lire le cache userData
-        return await service.getMetadata(romFileName, systemId, cfg.romsRoot ?? "");
+        return await service.getMetadata(
+          romFileName,
+          systemId,
+          cfg.romsRoot ?? "",
+        );
       } catch {
         return null;
       }
@@ -632,7 +655,11 @@ app.whenReady().then(async () => {
     async (evt: IPCEventLike, opts?: { force?: boolean }) => {
       try {
         const cfg = await ensureConfig(userData);
-        if (!cfg.romsRoot) return { totals: { processed: 0, created: 0, skipped: 0, failed: 0 }, systems: [] };
+        if (!cfg.romsRoot)
+          return {
+            totals: { processed: 0, created: 0, skipped: 0, failed: 0 },
+            systems: [],
+          };
         const service = new MetadataService({
           screenscraper: cfg.scrapers?.screenscraper,
           igdb: cfg.scrapers?.igdb,
@@ -678,7 +705,10 @@ app.whenReady().then(async () => {
         return aggregate;
       } catch (error) {
         console.error("Error downloading all metadata:", error);
-        return { totals: { processed: 0, created: 0, skipped: 0, failed: 0 }, systems: [] };
+        return {
+          totals: { processed: 0, created: 0, skipped: 0, failed: 0 },
+          systems: [],
+        };
       }
     },
   );

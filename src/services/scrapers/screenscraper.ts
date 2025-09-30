@@ -1,6 +1,11 @@
 import { BaseScraper } from "./base-scraper";
 import * as path from "path";
-import { ScrapedGame, ScrapedMedia, ScraperCredentials, ImageType } from "./types";
+import {
+  ScrapedGame,
+  ScrapedMedia,
+  ScraperCredentials,
+  ImageType,
+} from "./types";
 import { getCatalog } from "../../config";
 
 // Note: media objects from ScreenScraper responses are loosely typed
@@ -30,11 +35,15 @@ export class ScreenScraperScraper extends BaseScraper {
     try {
       // If neither user nor developer credentials are provided, ScreenScraper may reject requests.
       // Avoid hitting the API in that case and surface a clear warning instead of a JSON parse error.
-      const hasUserCreds = !!(this.credentials?.ssid && this.credentials?.sspassword);
-      const hasDevCreds = !!(this.credentials?.devid && this.credentials?.devpassword);
+      const hasUserCreds = !!(
+        this.credentials?.ssid && this.credentials?.sspassword
+      );
+      const hasDevCreds = !!(
+        this.credentials?.devid && this.credentials?.devpassword
+      );
       if (!hasUserCreds && !hasDevCreds) {
         console.warn(
-          "ScreenScraper credentials missing: provide either user (ssid + sspassword) or developer (devid + devpassword)."
+          "ScreenScraper credentials missing: provide either user (ssid + sspassword) or developer (devid + devpassword).",
         );
         return null;
       }
@@ -127,7 +136,9 @@ export class ScreenScraperScraper extends BaseScraper {
         });
         this.appendAuthParams(fallbackParams);
         const fallbackUrl = `${this.baseUrl}/jeuRecherche.php?${fallbackParams.toString()}`;
-        console.log(`[ScreenScraper] GET ${redactUrl(fallbackUrl)} (fallback romnom)`);
+        console.log(
+          `[ScreenScraper] GET ${redactUrl(fallbackUrl)} (fallback romnom)`,
+        );
         const fbResp = await fetch(fallbackUrl, {
           headers: { "User-Agent": this.userAgent },
         });
@@ -235,7 +246,11 @@ export class ScreenScraperScraper extends BaseScraper {
       const catalog = getCatalog();
       const sys = catalog.systems.find(
         (s) => s.id.toLowerCase() === String(systemId).toLowerCase(),
-      ) as (typeof catalog.systems[number] & { scrapers?: { screenscraper?: { systemId?: string } } }) | undefined;
+      ) as
+        | ((typeof catalog.systems)[number] & {
+            scrapers?: { screenscraper?: { systemId?: string } };
+          })
+        | undefined;
       const idFromCatalog = sys?.scrapers?.screenscraper?.systemId;
       if (idFromCatalog && String(idFromCatalog).trim().length > 0) {
         return String(idFromCatalog);
@@ -250,33 +265,46 @@ export class ScreenScraperScraper extends BaseScraper {
     // Map ScreenScraper media types to our internal types
     const t = mediaType.toLowerCase();
     if (t === "box-2d" || t === "box-front") return "cover";
-    if (t === "sstitle" || t === "screenmarquee" || t === "screenmarqueesmall" || t === "marquee") return "title";
+    if (
+      t === "sstitle" ||
+      t === "screenmarquee" ||
+      t === "screenmarqueesmall" ||
+      t === "marquee"
+    )
+      return "title";
     if (t === "ss" || t === "screenshot") return "screenshot";
     // Some systems expose multiple wheel variants – normalize them to 'wheel'
     if (
       t === "wheel" ||
-      t === "wheel-hd" || t === "wheelhd" ||
-      t === "wheel-carbon" || t === "wheel-steel"
-    ) return "wheel";
+      t === "wheel-hd" ||
+      t === "wheelhd" ||
+      t === "wheel-carbon" ||
+      t === "wheel-steel"
+    )
+      return "wheel";
     return null;
   }
 
   // ScreenScraper: exposent des types vidéos comme 'video-normalized'
-  protected getVideoType(mediaType: string): 'normalized' | null {
+  protected getVideoType(mediaType: string): "normalized" | null {
     const t = mediaType.toLowerCase();
-    if (t === 'video-normalized') return 'normalized';
+    if (t === "video-normalized") return "normalized";
     return null;
   }
 
   // Prefer HD variants when available (e.g., 'wheel-hd' over 'wheel')
-  protected getImageQualityPriority(imageType: ImageType, mediaType: string, _format?: string): number {
+  protected getImageQualityPriority(
+    imageType: ImageType,
+    mediaType: string,
+    _format?: string,
+  ): number {
     void _format;
     const t = mediaType.toLowerCase();
-    if (imageType === 'wheel') {
-      if (t.includes('wheel-hd') || t.includes('wheelhd')) return 10;
-      if (t === 'wheel') return 7;
-      if (t === 'wheel-steel') return 5;
-      if (t === 'wheel-carbon') return 4;
+    if (imageType === "wheel") {
+      if (t.includes("wheel-hd") || t.includes("wheelhd")) return 10;
+      if (t === "wheel") return 7;
+      if (t === "wheel-steel") return 5;
+      if (t === "wheel-carbon") return 4;
     }
     // Generic preference: png/webp slightly preferred by default could be added later
     return 0;
@@ -528,7 +556,8 @@ function redactUrl(urlStr: string): string {
 function getJeu(data: unknown): Record<string, unknown> | undefined {
   if (!isObject(data)) return undefined;
   const response = data["response"];
-  if (!response || (!Array.isArray(response) && !isObject(response))) return undefined;
+  if (!response || (!Array.isArray(response) && !isObject(response)))
+    return undefined;
   const lookups = Array.isArray(response) ? response : [response];
   for (const entry of lookups) {
     if (!isObject(entry)) continue;
@@ -547,9 +576,11 @@ function coerceIdCarrier(o: Record<string, unknown>): IdCarrier {
   const id = o["id"];
   if (typeof id === "string" || typeof id === "number") carrier.id = id;
   const jeuid = o["jeuid"];
-  if (typeof jeuid === "string" || typeof jeuid === "number") carrier.jeuid = jeuid;
+  if (typeof jeuid === "string" || typeof jeuid === "number")
+    carrier.jeuid = jeuid;
   const idJeu = o["idJeu"];
-  if (typeof idJeu === "string" || typeof idJeu === "number") carrier.idJeu = idJeu;
+  if (typeof idJeu === "string" || typeof idJeu === "number")
+    carrier.idJeu = idJeu;
   return carrier;
 }
 
@@ -573,4 +604,3 @@ function getNestedText(
   }
   return null;
 }
-
