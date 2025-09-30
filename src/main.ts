@@ -1,12 +1,5 @@
-// Import electron via require to avoid TS module resolution issue in this environment
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const {
-  app,
-  BrowserWindow,
-  ipcMain,
-  dialog,
-  globalShortcut,
-} = require("electron");
+import electron = require("electron");
+const { app, BrowserWindow, ipcMain, dialog, globalShortcut } = electron;
 
 import { spawn } from "node:child_process";
 import { MetadataService } from "./services/metadata-service";
@@ -26,6 +19,10 @@ import {
 } from "./config";
 import type { AppUpdater } from "electron-updater";
 import { filterRoms } from "./utils/exclude";
+import type {
+  AllDownloadResult,
+  SystemDownloadResult,
+} from "./services/scrapers/types";
 
 // Minimal event type (opaque) for IPC invoke handlers
 interface IPCEventLike {
@@ -645,11 +642,13 @@ app.whenReady().then(async () => {
           | "screenscraper";
         service.setDefaultScraper(defScraper);
         const catalog = getCatalog();
-        const systems: Array<{ id: string }> = catalog.systems as any;
-        const all: { systems: any[]; totals: { processed: number; created: number; skipped: number; failed: number } } = {
-          systems: [],
-          totals: { processed: 0, created: 0, skipped: 0, failed: 0 },
+        const totals: AllDownloadResult["totals"] = {
+          processed: 0,
+          created: 0,
+          skipped: 0,
+          failed: 0,
         };
+        const systemsResults: SystemDownloadResult[] = [];
         for (const sys of catalog.systems) {
           const res = await service.downloadSystemMetadata(
             sys.id,
@@ -665,14 +664,18 @@ app.whenReady().then(async () => {
             { ...opts, exclude: sys.exclude ?? [] },
           );
           if (res) {
-            all.systems.push(res);
-            all.totals.processed += res.processed;
-            all.totals.created += res.created;
-            all.totals.skipped += res.skipped;
-            all.totals.failed += res.failed;
+            systemsResults.push(res);
+            totals.processed += res.processed;
+            totals.created += res.created;
+            totals.skipped += res.skipped;
+            totals.failed += res.failed;
           }
         }
-        return all;
+        const aggregate: AllDownloadResult = {
+          systems: systemsResults,
+          totals,
+        };
+        return aggregate;
       } catch (error) {
         console.error("Error downloading all metadata:", error);
         return { totals: { processed: 0, created: 0, skipped: 0, failed: 0 }, systems: [] };

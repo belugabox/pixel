@@ -270,6 +270,7 @@ export class ScreenScraperScraper extends BaseScraper {
 
   // Prefer HD variants when available (e.g., 'wheel-hd' over 'wheel')
   protected getImageQualityPriority(imageType: ImageType, mediaType: string, _format?: string): number {
+    void _format;
     const t = mediaType.toLowerCase();
     if (imageType === 'wheel') {
       if (t.includes('wheel-hd') || t.includes('wheelhd')) return 10;
@@ -291,9 +292,11 @@ export class ScreenScraperScraper extends BaseScraper {
     const publisher = getNestedText(jeu, "editeur") || undefined;
     const players = getNestedText(jeu, "joueurs", "text") || undefined;
     const rating = getNestedText(jeu, "note", "text") || undefined;
-    const medias = Array.isArray((jeu as any).medias)
-      ? ((jeu as any).medias as any[]).map(mapMediaSafe).filter(Boolean)
-      : [];
+    const mediasValue = jeu["medias"];
+    const rawMedias = Array.isArray(mediasValue) ? mediasValue : [];
+    const medias: ScrapedMedia[] = rawMedias
+      .map((entry) => mapMediaSafe(entry))
+      .filter((entry): entry is ScrapedMedia => entry !== null);
 
     return {
       id,
@@ -305,7 +308,7 @@ export class ScreenScraperScraper extends BaseScraper {
       publisher,
       players,
       rating,
-      media: medias as ScrapedMedia[],
+      media: medias,
     };
   }
 }
@@ -371,86 +374,30 @@ function hasHeaderError(
   return typeof err === "string" && err.length > 0;
 }
 
-function getJeu(data: unknown): Record<string, unknown> | undefined {
-  if (!isObject(data)) return undefined;
-  const respVal = (data as Record<string, unknown>)["response"];
-  if (!isObject(respVal)) return undefined;
-  const jeuVal = respVal["jeu"];
-  if (Array.isArray(jeuVal)) {
-    const first = jeuVal[0];
-    return isObject(first) ? (first as Record<string, unknown>) : undefined;
-  }
-  if (isObject(jeuVal)) return jeuVal as Record<string, unknown>;
-  return undefined;
-}
-
-function coerceIdCarrier(o: Record<string, unknown>): IdCarrier {
-  const out: IdCarrier = {};
-  const id = o["id"];
-  if (typeof id === "string" || typeof id === "number") out.id = id;
-  const jeuid = o["jeuid"];
-  if (typeof jeuid === "string" || typeof jeuid === "number") out.jeuid = jeuid;
-  const idJeu = o["idJeu"];
-  if (typeof idJeu === "string" || typeof idJeu === "number") out.idJeu = idJeu;
-  return out;
-}
-
-function isShortRomName(name: string): boolean {
-  const n = name.trim();
-  if (n.includes(" ")) return false;
-  if (n.length === 0) return false;
-  if (n.length > 16) return false;
-  return /^[a-z0-9._-]+$/i.test(n);
-}
-
-function redactUrl(urlStr: string): string {
-  try {
-    const u = new URL(urlStr);
-    const redactKeys = new Set(["ssid", "sspassword", "devid", "devpassword"]);
-    for (const key of Array.from(u.searchParams.keys())) {
-      if (redactKeys.has(key)) {
-        u.searchParams.set(key, "***");
+function pickJeuName(jeu: Record<string, unknown>): string | null {
+  const nomsValue = jeu["noms"];
+  if (Array.isArray(nomsValue)) {
+    const preferredRegions = ["ss", "wor", "eu", "us", "jp"];
+    const regionTexts = new Map<string, string>();
+    let fallback: string | null = null;
+    for (const entry of nomsValue) {
+      if (!isObject(entry)) continue;
+      const regionRaw = entry["region"];
+      const textRaw = entry["text"];
+      if (typeof textRaw !== "string") continue;
+      if (!fallback) fallback = textRaw;
+      if (typeof regionRaw !== "string") continue;
+      const regionKey = regionRaw.toLowerCase();
+      if (!regionTexts.has(regionKey)) {
+        regionTexts.set(regionKey, textRaw);
       }
     }
-    return u.toString();
-  } catch {
-    return urlStr;
-  }
-}
-
-// ===== Helpers to parse ScreenScraper structures =====
-function getString(o: Record<string, unknown>, key: string): string | null {
-  const v = o[key];
-  return typeof v === "string" ? v : typeof v === "number" ? String(v) : null;
-}
-
-function getNestedText(
-  o: Record<string, unknown>,
-  key: string,
-  subKey = "text",
-): string | null {
-  const v = o[key];
-  if (typeof v === "string") return v;
-  if (isObject(v)) {
-    const t = (v as Record<string, unknown>)[subKey];
-    return typeof t === "string" ? t : null;
-  }
-  return null;
-}
-
-function pickJeuName(jeu: Record<string, unknown>): string | null {
-  const noms = (jeu as any).noms;
-  if (Array.isArray(noms)) {
-    // prefer regions: ss, wor, eu, us, jp, else first
-    const pref = ["ss", "wor", "eu", "us", "jp"];
-    for (const region of pref) {
-      const found = noms.find((n: any) => n && n.region === region && typeof n.text === "string");
-      if (found) return found.text as string;
+    for (const region of preferredRegions) {
+      const text = regionTexts.get(region);
+      if (text) return text;
     }
-    const first = noms.find((n: any) => typeof n?.text === "string");
-    if (first) return first.text as string;
+    if (fallback) return fallback;
   }
-  // fallback: try plain name fields
   return getString(jeu, "nom");
 }
 
@@ -458,28 +405,50 @@ function pickSynopsis(
   jeu: Record<string, unknown>,
   langsPreferred: string[] = ["fr", "en"],
 ): string | null {
-  const syns = (jeu as any).synopsis;
-  if (Array.isArray(syns)) {
+  const synopsisValue = jeu["synopsis"];
+  if (Array.isArray(synopsisValue)) {
     for (const lang of langsPreferred) {
-      const found = syns.find((s: any) => s && s.langue === lang && typeof s.text === "string");
-      if (found) return found.text as string;
+      for (const entry of synopsisValue) {
+        if (!isObject(entry)) continue;
+        const entryLang = entry["langue"];
+        const text = entry["text"];
+        if (entryLang === lang && typeof text === "string") {
+          return text;
+        }
+      }
     }
-    const first = syns.find((s: any) => typeof s?.text === "string");
-    if (first) return first.text as string;
+    for (const entry of synopsisValue) {
+      if (!isObject(entry)) continue;
+      const text = entry["text"];
+      if (typeof text === "string") {
+        return text;
+      }
+    }
   }
   return null;
 }
 
 function pickReleaseDate(jeu: Record<string, unknown>): string | null {
-  const dates = (jeu as any).dates;
-  if (Array.isArray(dates)) {
-    const order = ["wor", "eu", "us", "jp"];
-    for (const region of order) {
-      const found = dates.find((d: any) => d && d.region === region && typeof d.text === "string");
-      if (found) return found.text as string;
+  const datesValue = jeu["dates"];
+  if (Array.isArray(datesValue)) {
+    const regionOrder = ["wor", "eu", "us", "jp"];
+    for (const region of regionOrder) {
+      for (const entry of datesValue) {
+        if (!isObject(entry)) continue;
+        const entryRegion = entry["region"];
+        const text = entry["text"];
+        if (entryRegion === region && typeof text === "string") {
+          return text;
+        }
+      }
     }
-    const first = dates.find((d: any) => typeof d?.text === "string");
-    if (first) return first.text as string;
+    for (const entry of datesValue) {
+      if (!isObject(entry)) continue;
+      const text = entry["text"];
+      if (typeof text === "string") {
+        return text;
+      }
+    }
   }
   return null;
 }
@@ -488,38 +457,120 @@ function pickGenres(
   jeu: Record<string, unknown>,
   langsPreferred: string[] = ["fr", "en"],
 ): string | null {
-  const genres = (jeu as any).genres;
-  if (Array.isArray(genres)) {
-    const names: string[] = [];
-    // Prefer principale === "1"
-    const prim = genres.filter((g: any) => g && (g.principale === "1" || g.principale === 1));
-    const list = prim.length > 0 ? prim : genres;
-    for (const g of list) {
-      const noms = Array.isArray(g?.noms) ? g.noms : [];
+  const genresValue = jeu["genres"];
+  if (!Array.isArray(genresValue)) return null;
+  const entries = genresValue.filter(isObject);
+  const primary = entries.filter((entry) => {
+    const principale = entry["principale"];
+    return principale === "1" || principale === 1;
+  });
+  const list = primary.length > 0 ? primary : entries;
+  const collected = new Set<string>();
+  for (const entry of list) {
+    const nomsValue = entry["noms"];
+    if (Array.isArray(nomsValue)) {
       let added = false;
       for (const lang of langsPreferred) {
-        const found = noms.find((n: any) => n && n.langue === lang && typeof n.text === "string");
-        if (found) {
-          names.push(found.text as string);
-          added = true;
-          break;
+        for (const nomEntry of nomsValue) {
+          if (!isObject(nomEntry)) continue;
+          const langValue = nomEntry["langue"];
+          const textValue = nomEntry["text"];
+          if (langValue === lang && typeof textValue === "string") {
+            collected.add(textValue);
+            added = true;
+            break;
+          }
         }
+        if (added) break;
       }
       if (!added) {
-        const first = noms.find((n: any) => typeof n?.text === "string");
-        if (first) names.push(first.text as string);
+        for (const nomEntry of nomsValue) {
+          if (!isObject(nomEntry)) continue;
+          const textValue = nomEntry["text"];
+          if (typeof textValue === "string") {
+            collected.add(textValue);
+            break;
+          }
+        }
       }
     }
-    if (names.length > 0) return Array.from(new Set(names)).join(" / ");
+  }
+  if (collected.size === 0) return null;
+  return Array.from(collected).join(" / ");
+}
+
+function mapMediaSafe(m: unknown): ScrapedMedia | null {
+  if (!isObject(m)) return null;
+  const typeValue = m["type"];
+  const urlValue = m["url"];
+  const formatValue = m["format"];
+  if (typeof urlValue !== "string") return null;
+  const type = typeof typeValue === "string" ? typeValue : "";
+  const format = typeof formatValue === "string" ? formatValue : "";
+  return { type, url: urlValue, format };
+}
+
+function redactUrl(urlStr: string): string {
+  try {
+    const url = new URL(urlStr);
+    const redactKeys = new Set(["ssid", "sspassword", "devid", "devpassword"]);
+    for (const key of url.searchParams.keys()) {
+      if (redactKeys.has(key)) {
+        url.searchParams.set(key, "***");
+      }
+    }
+    return url.toString();
+  } catch {
+    return urlStr;
+  }
+}
+
+function getJeu(data: unknown): Record<string, unknown> | undefined {
+  if (!isObject(data)) return undefined;
+  const response = data["response"];
+  if (!response || (!Array.isArray(response) && !isObject(response))) return undefined;
+  const lookups = Array.isArray(response) ? response : [response];
+  for (const entry of lookups) {
+    if (!isObject(entry)) continue;
+    const jeu = entry["jeu"];
+    if (Array.isArray(jeu)) {
+      const first = jeu.find(isObject);
+      if (first) return first;
+    }
+    if (isObject(jeu)) return jeu;
+  }
+  return undefined;
+}
+
+function coerceIdCarrier(o: Record<string, unknown>): IdCarrier {
+  const carrier: IdCarrier = {};
+  const id = o["id"];
+  if (typeof id === "string" || typeof id === "number") carrier.id = id;
+  const jeuid = o["jeuid"];
+  if (typeof jeuid === "string" || typeof jeuid === "number") carrier.jeuid = jeuid;
+  const idJeu = o["idJeu"];
+  if (typeof idJeu === "string" || typeof idJeu === "number") carrier.idJeu = idJeu;
+  return carrier;
+}
+
+function getString(o: Record<string, unknown>, key: string): string | null {
+  const value = o[key];
+  if (typeof value === "string") return value;
+  if (typeof value === "number") return String(value);
+  return null;
+}
+
+function getNestedText(
+  o: Record<string, unknown>,
+  key: string,
+  subKey = "text",
+): string | null {
+  const value = o[key];
+  if (typeof value === "string") return value;
+  if (isObject(value)) {
+    const inner = value[subKey];
+    if (typeof inner === "string") return inner;
   }
   return null;
 }
 
-function mapMediaSafe(m: any): ScrapedMedia | null {
-  if (!m || typeof m !== "object") return null;
-  const type = typeof m.type === "string" ? m.type : null;
-  const url = typeof m.url === "string" ? m.url : null;
-  const format = typeof m.format === "string" ? m.format : "";
-  if (!url) return null;
-  return { type: type || "", url, format };
-}

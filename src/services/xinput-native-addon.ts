@@ -2,6 +2,9 @@
 // Version étendue: essaie un ensemble élargi de chemins (dev, build, package) et fournit
 // un diagnostic clair si le binaire est manquant avec la commande à exécuter.
 
+import path from "node:path";
+import fs from "node:fs";
+
 export type NativeWatcher = {
   start: () => void;
   stop: () => void;
@@ -28,9 +31,6 @@ export function loadAddon() {
   if (loaded || loadError) return loaded;
   console.log("[xinput-native] Attempting to load XInput native addon...");
 
-  const path = require("node:path") as typeof import("node:path");
-  const fs = require("node:fs") as typeof import("node:fs");
-
   function uniq<T>(arr: T[]): T[] {
     return Array.from(new Set(arr));
   }
@@ -41,7 +41,12 @@ export function loadAddon() {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     const { app } = require("electron") as typeof import("electron");
     if (app?.getAppPath) appPath = app.getAppPath();
-    resourcesPath = (process as any).resourcesPath;
+    const proc = process as NodeJS.Process & {
+      resourcesPath?: unknown;
+    };
+    if (typeof proc.resourcesPath === "string") {
+      resourcesPath = proc.resourcesPath;
+    }
   } catch {
     // Pas en contexte Electron (tests script) – ignorer
   }

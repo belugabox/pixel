@@ -21,5 +21,6 @@
   "workbench.editor.highlightModifiedTabs": true,
   "files.trimTrailingWhitespace": true,
   "files.insertFinalNewline": true,
-  "editor.formatOnSave": true
+  "editor.formatOnSave": true,
+  "typescript.tsdk": "node_modules\\typescript\\lib"
 }

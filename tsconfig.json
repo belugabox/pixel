@@ -1,7 +1,7 @@
 {
   "compilerOptions": {
     "target": "ESNext",
-    "module": "Node16",
+  "module": "NodeNext",
     "allowJs": true,
     "skipLibCheck": true,
     "esModuleInterop": true,
@@ -9,10 +9,25 @@
     "sourceMap": true,
     "baseUrl": ".",
     "outDir": "dist",
-    "moduleResolution": "Node16",
+  "moduleResolution": "nodenext",
     "resolveJsonModule": true,
     "jsx": "react-jsx",
     "lib": ["ES2021", "DOM"],
     "types": ["vite/client"]
-  }
+  },
+  "include": [
+  "src/**/*.ts",
+  "src/**/*.tsx",
+  "src/**/*.d.ts",
+    "scripts/**/*.ts",
+    "forge.config.ts",
+    "vite.*.config.ts"
+  ],
+  "exclude": [
+    "dist",
+    "dist-native",
+    "out",
+    "node_modules",
+    "native"
+  ]
 }
